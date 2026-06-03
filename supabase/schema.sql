@@ -1,4 +1,4 @@
--- OsteoCare MVP - schema PostgreSQL per Supabase
+-- Gestionale Filipponi Danilo - schema PostgreSQL per Supabase
 create extension if not exists "uuid-ossp";
 
 create table public.utenti (

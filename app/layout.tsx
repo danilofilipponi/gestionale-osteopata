@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "OsteoCare | Gestionale Studio",
-  description: "Gestionale professionale per studi di osteopatia",
+  title: "Danilo Filipponi | Gestionale Studio",
+  description: "Gestionale professionale per studio di riabilitazione e osteopatia",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

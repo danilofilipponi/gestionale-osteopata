@@ -10,8 +10,8 @@ begin
   insert into public.utenti (id, nome, cognome, email)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data ->> 'nome', 'Professionista'),
-    coalesce(new.raw_user_meta_data ->> 'cognome', 'Studio'),
+    coalesce(new.raw_user_meta_data ->> 'nome', 'Danilo'),
+    coalesce(new.raw_user_meta_data ->> 'cognome', 'Filipponi'),
     coalesce(new.email, '')
   )
   on conflict (id) do nothing;
@@ -28,8 +28,8 @@ create trigger on_auth_user_created
 insert into public.utenti (id, nome, cognome, email)
 select
   id,
-  coalesce(raw_user_meta_data ->> 'nome', 'Professionista'),
-  coalesce(raw_user_meta_data ->> 'cognome', 'Studio'),
+  coalesce(raw_user_meta_data ->> 'nome', 'Danilo'),
+  coalesce(raw_user_meta_data ->> 'cognome', 'Filipponi'),
   coalesce(email, '')
 from auth.users
 on conflict (id) do nothing;

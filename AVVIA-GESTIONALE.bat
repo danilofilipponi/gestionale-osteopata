@@ -7,8 +7,8 @@ if not exist node_modules (
   call npm install --cache .npm-cache --no-audit --no-fund
 )
 
-echo Avvio OsteoCare...
-start "" cmd /c "timeout /t 6 /nobreak >nul && start http://localhost:3000"
+echo Avvio Gestionale Filipponi Danilo...
+start "" cmd /c "timeout /t 15 /nobreak >nul && start http://localhost:3000"
 call npm run dev
 
 pause

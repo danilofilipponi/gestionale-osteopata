@@ -1,6 +1,6 @@
-# OsteoCare
+# Gestionale Filipponi Danilo
 
-MVP navigabile di un gestionale web per studio di osteopatia, sviluppato con Next.js, React, TypeScript, Tailwind CSS e predisposizione Supabase.
+MVP navigabile di un gestionale web per lo studio Filipponi Danilo, riabilitazione e osteopatia, sviluppato con Next.js, React, TypeScript, Tailwind CSS e Supabase.
 
 ## Avvio locale
 
@@ -29,6 +29,7 @@ Aprire `http://localhost:3000`. Senza variabili Supabase il progetto usa la moda
 - dashboard responsive;
 - elenco, ricerca, inserimento, modifica ed eliminazione pazienti salvati su Supabase;
 - anagrafica e cartella clinica salvate su Supabase, con sezioni predisposte per sedute, fatture e documenti;
+- database locale dei 7.894 comuni italiani aggiornato al 29/05/2026, con provincia, CAP multipli e codice catastale/Belfiore;
 - elenco fatture Supabase con filtri, inserimento, eliminazione con conferma ed esportazione PDF;
 - schema PostgreSQL relazionale con Row Level Security.
 
