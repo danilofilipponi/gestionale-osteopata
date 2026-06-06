@@ -1,0 +1,36 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Invoice;
+use App\Models\Patient;
+use App\Models\TreatmentSession;
+use Illuminate\Support\Facades\Auth;
+
+class DashboardController extends Controller
+{
+    public function __invoke()
+    {
+        $userId = Auth::id();
+
+        return view('dashboard', [
+            'patientsCount' => Patient::where('user_id', $userId)->count(),
+            'sessionsThisMonth' => TreatmentSession::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
+                ->whereBetween('session_date', [now()->startOfMonth(), now()->endOfMonth()])
+                ->count(),
+            'openInvoicesTotal' => Invoice::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
+                ->whereIn('status', ['draft', 'sent'])
+                ->sum('amount'),
+            'recentPatients' => Patient::where('user_id', $userId)
+                ->latest()
+                ->take(5)
+                ->get(),
+            'upcomingSessions' => TreatmentSession::with('patient')
+                ->whereHas('patient', fn ($query) => $query->where('user_id', $userId))
+                ->whereDate('session_date', '>=', now()->toDateString())
+                ->oldest('session_date')
+                ->take(5)
+                ->get(),
+        ]);
+    }
+}
