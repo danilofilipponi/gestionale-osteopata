@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Invoice;
 use App\Models\Patient;
+use App\Models\TreatmentSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -52,6 +54,35 @@ class PatientController extends Controller
         return view('patients.show', compact('patient'));
     }
 
+    public function edit(Patient $patient)
+    {
+        $this->authorizePatient($patient);
+
+        return view('patients.edit', compact('patient'));
+    }
+
+    public function update(Request $request, Patient $patient)
+    {
+        $this->authorizePatient($patient);
+
+        $patient->update($this->validatedPatient($request));
+
+        return redirect()
+            ->route('patients.show', $patient)
+            ->with('status', 'Paziente aggiornato correttamente.');
+    }
+
+    public function destroy(Patient $patient)
+    {
+        $this->authorizePatient($patient);
+
+        $patient->delete();
+
+        return redirect()
+            ->route('patients.index')
+            ->with('status', 'Paziente eliminato.');
+    }
+
     public function storeMedicalRecord(Request $request, Patient $patient)
     {
         $this->authorizePatient($patient);
@@ -71,7 +102,60 @@ class PatientController extends Controller
     {
         $this->authorizePatient($patient);
 
-        $patient->treatmentSessions()->create($request->validate([
+        $data = $this->validatedTreatmentSession($request);
+        $data['paid'] = $request->boolean('paid');
+
+        $patient->treatmentSessions()->create($data);
+
+        return back()->with('status', 'Seduta registrata.');
+    }
+
+    public function updateTreatmentSession(Request $request, Patient $patient, TreatmentSession $session)
+    {
+        $this->authorizePatient($patient);
+        $this->authorizePatientRelation($patient, $session->patient_id);
+
+        $data = $this->validatedTreatmentSession($request);
+        $data['paid'] = $request->boolean('paid');
+
+        $session->update($data);
+
+        return back()->with('status', 'Seduta aggiornata.');
+    }
+
+    public function destroyTreatmentSession(Patient $patient, TreatmentSession $session)
+    {
+        $this->authorizePatient($patient);
+        $this->authorizePatientRelation($patient, $session->patient_id);
+
+        $session->delete();
+
+        return back()->with('status', 'Seduta eliminata.');
+    }
+
+    public function updateInvoice(Request $request, Patient $patient, Invoice $invoice)
+    {
+        $this->authorizePatient($patient);
+        $this->authorizePatientRelation($patient, $invoice->patient_id);
+
+        $invoice->update($this->validatedInvoice($request));
+
+        return back()->with('status', 'Fattura aggiornata.');
+    }
+
+    public function destroyInvoice(Patient $patient, Invoice $invoice)
+    {
+        $this->authorizePatient($patient);
+        $this->authorizePatientRelation($patient, $invoice->patient_id);
+
+        $invoice->delete();
+
+        return back()->with('status', 'Fattura eliminata.');
+    }
+
+    private function validatedTreatmentSession(Request $request): array
+    {
+        return $request->validate([
             'session_date' => ['required', 'date'],
             'title' => ['required', 'string', 'max:255'],
             'objective' => ['nullable', 'string'],
@@ -79,24 +163,27 @@ class PatientController extends Controller
             'outcome' => ['nullable', 'string'],
             'fee' => ['nullable', 'numeric', 'min:0'],
             'paid' => ['nullable', 'boolean'],
-        ]));
-
-        return back()->with('status', 'Seduta registrata.');
+        ]);
     }
 
     public function storeInvoice(Request $request, Patient $patient)
     {
         $this->authorizePatient($patient);
 
-        $patient->invoices()->create($request->validate([
+        $patient->invoices()->create($this->validatedInvoice($request));
+
+        return back()->with('status', 'Fattura registrata.');
+    }
+
+    private function validatedInvoice(Request $request): array
+    {
+        return $request->validate([
             'number' => ['nullable', 'string', 'max:255'],
             'issued_at' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0'],
             'status' => ['required', 'in:draft,sent,paid,cancelled'],
             'description' => ['nullable', 'string'],
-        ]));
-
-        return back()->with('status', 'Fattura registrata.');
+        ]);
     }
 
     private function validatedPatient(Request $request): array
@@ -116,5 +203,10 @@ class PatientController extends Controller
     private function authorizePatient(Patient $patient): void
     {
         abort_unless($patient->user_id === Auth::id(), 404);
+    }
+
+    private function authorizePatientRelation(Patient $patient, int $patientId): void
+    {
+        abort_unless($patient->id === $patientId, 404);
     }
 }

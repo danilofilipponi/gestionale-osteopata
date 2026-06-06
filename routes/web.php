@@ -14,13 +14,21 @@ Route::get('/dashboard', DashboardController::class)
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::resource('patients', PatientController::class)->only(['index', 'create', 'store', 'show']);
+    Route::resource('patients', PatientController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('/patients/{patient}/medical-record', [PatientController::class, 'storeMedicalRecord'])
         ->name('patients.medical-record.store');
     Route::post('/patients/{patient}/sessions', [PatientController::class, 'storeTreatmentSession'])
         ->name('patients.sessions.store');
+    Route::patch('/patients/{patient}/sessions/{session}', [PatientController::class, 'updateTreatmentSession'])
+        ->name('patients.sessions.update');
+    Route::delete('/patients/{patient}/sessions/{session}', [PatientController::class, 'destroyTreatmentSession'])
+        ->name('patients.sessions.destroy');
     Route::post('/patients/{patient}/invoices', [PatientController::class, 'storeInvoice'])
         ->name('patients.invoices.store');
+    Route::patch('/patients/{patient}/invoices/{invoice}', [PatientController::class, 'updateInvoice'])
+        ->name('patients.invoices.update');
+    Route::delete('/patients/{patient}/invoices/{invoice}', [PatientController::class, 'destroyInvoice'])
+        ->name('patients.invoices.destroy');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

@@ -27,7 +27,7 @@
                 </div>
                 <div class="rounded-lg bg-white p-5 shadow-sm">
                     <p class="text-sm text-gray-500">Fatture aperte</p>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">€ {{ number_format($openInvoicesTotal, 2, ',', '.') }}</p>
+                    <p class="mt-2 text-3xl font-semibold text-gray-900">EUR {{ number_format($openInvoicesTotal, 2, ',', '.') }}</p>
                 </div>
             </div>
 

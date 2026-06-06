@@ -3,9 +3,12 @@
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $patient->full_name }}</h2>
-                <p class="mt-1 text-sm text-gray-500">{{ $patient->phone ?: 'Telefono non inserito' }} · {{ $patient->email ?: 'Email non inserita' }}</p>
+                <p class="mt-1 text-sm text-gray-500">{{ $patient->phone ?: 'Telefono non inserito' }} - {{ $patient->email ?: 'Email non inserita' }}</p>
             </div>
-            <a href="{{ route('patients.index') }}" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Torna ai pazienti</a>
+            <div class="flex flex-wrap gap-3">
+                <a href="{{ route('patients.edit', $patient) }}" class="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800">Modifica paziente</a>
+                <a href="{{ route('patients.index') }}" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Torna ai pazienti</a>
+            </div>
         </div>
     </x-slot>
 
@@ -98,7 +101,37 @@
                                     <p class="text-sm text-gray-500">{{ $session->session_date->format('d/m/Y') }}</p>
                                 </div>
                                 <p class="mt-2 text-sm text-gray-600">{{ $session->treatment ?: 'Nessun dettaglio trattamento inserito.' }}</p>
-                                <p class="mt-2 text-sm text-gray-500">€ {{ number_format($session->fee ?? 0, 2, ',', '.') }} · {{ $session->paid ? 'Pagata' : 'Da saldare' }}</p>
+                                <p class="mt-2 text-sm text-gray-500">EUR {{ number_format($session->fee ?? 0, 2, ',', '.') }} - {{ $session->paid ? 'Pagata' : 'Da saldare' }}</p>
+
+                                <details class="mt-3">
+                                    <summary class="cursor-pointer text-sm font-medium text-gray-700">Modifica seduta</summary>
+                                    <form method="POST" action="{{ route('patients.sessions.update', [$patient, $session]) }}" class="mt-4 space-y-3 rounded-md border border-gray-200 p-4">
+                                        @csrf
+                                        @method('PATCH')
+                                        <div class="grid gap-3 md:grid-cols-2">
+                                            <x-text-input name="session_date" type="date" :value="$session->session_date->toDateString()" required />
+                                            <x-text-input name="title" :value="$session->title" required />
+                                        </div>
+                                        <textarea name="objective" rows="2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Obiettivo">{{ $session->objective }}</textarea>
+                                        <textarea name="treatment" rows="3" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Trattamento eseguito">{{ $session->treatment }}</textarea>
+                                        <textarea name="outcome" rows="2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Esito e indicazioni">{{ $session->outcome }}</textarea>
+                                        <div class="flex flex-wrap items-center justify-between gap-3">
+                                            <div class="flex items-center gap-4">
+                                                <x-text-input name="fee" type="number" step="0.01" min="0" class="w-40" placeholder="Importo" :value="$session->fee" />
+                                                <label class="flex items-center gap-2 text-sm text-gray-700">
+                                                    <input type="checkbox" name="paid" value="1" @checked($session->paid) class="rounded border-gray-300 text-gray-900 focus:ring-gray-900">
+                                                    Pagata
+                                                </label>
+                                            </div>
+                                            <x-primary-button>Salva seduta</x-primary-button>
+                                        </div>
+                                    </form>
+                                    <form method="POST" action="{{ route('patients.sessions.destroy', [$patient, $session]) }}" class="mt-2">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="text-sm font-medium text-red-700 hover:text-red-900" onclick="return confirm('Eliminare questa seduta?')">Elimina seduta</button>
+                                    </form>
+                                </details>
                             </div>
                         @empty
                             <p class="py-6 text-sm text-gray-500">Nessuna seduta registrata.</p>
@@ -110,12 +143,42 @@
                     <h3 class="font-semibold text-gray-900">Fatture</h3>
                     <div class="mt-4 divide-y divide-gray-100">
                         @forelse ($patient->invoices as $invoice)
-                            <div class="flex items-center justify-between gap-4 py-4">
-                                <div>
-                                    <p class="font-medium text-gray-900">{{ $invoice->number ?: 'Fattura senza numero' }}</p>
-                                    <p class="text-sm text-gray-500">{{ $invoice->issued_at->format('d/m/Y') }} · {{ $invoice->status }}</p>
+                            <div class="py-4">
+                                <div class="flex items-center justify-between gap-4">
+                                    <div>
+                                        <p class="font-medium text-gray-900">{{ $invoice->number ?: 'Fattura senza numero' }}</p>
+                                        <p class="text-sm text-gray-500">{{ $invoice->issued_at->format('d/m/Y') }} - {{ $invoice->status }}</p>
+                                    </div>
+                                    <p class="font-semibold text-gray-900">EUR {{ number_format($invoice->amount, 2, ',', '.') }}</p>
                                 </div>
-                                <p class="font-semibold text-gray-900">€ {{ number_format($invoice->amount, 2, ',', '.') }}</p>
+
+                                <details class="mt-3">
+                                    <summary class="cursor-pointer text-sm font-medium text-gray-700">Modifica fattura</summary>
+                                    <form method="POST" action="{{ route('patients.invoices.update', [$patient, $invoice]) }}" class="mt-4 space-y-3 rounded-md border border-gray-200 p-4">
+                                        @csrf
+                                        @method('PATCH')
+                                        <div class="grid gap-3 md:grid-cols-2">
+                                            <x-text-input name="number" placeholder="Numero fattura" :value="$invoice->number" />
+                                            <x-text-input name="issued_at" type="date" :value="$invoice->issued_at->toDateString()" required />
+                                            <x-text-input name="amount" type="number" step="0.01" min="0" placeholder="Importo" :value="$invoice->amount" required />
+                                            <select name="status" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
+                                                <option value="draft" @selected($invoice->status === 'draft')>Bozza</option>
+                                                <option value="sent" @selected($invoice->status === 'sent')>Inviata</option>
+                                                <option value="paid" @selected($invoice->status === 'paid')>Pagata</option>
+                                                <option value="cancelled" @selected($invoice->status === 'cancelled')>Annullata</option>
+                                            </select>
+                                        </div>
+                                        <textarea name="description" rows="3" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Descrizione">{{ $invoice->description }}</textarea>
+                                        <div class="flex flex-wrap items-center justify-between gap-3">
+                                            <button form="delete-invoice-{{ $invoice->id }}" class="text-sm font-medium text-red-700 hover:text-red-900" onclick="return confirm('Eliminare questa fattura?')">Elimina fattura</button>
+                                            <x-primary-button>Salva fattura</x-primary-button>
+                                        </div>
+                                    </form>
+                                    <form id="delete-invoice-{{ $invoice->id }}" method="POST" action="{{ route('patients.invoices.destroy', [$patient, $invoice]) }}" class="hidden">
+                                        @csrf
+                                        @method('DELETE')
+                                    </form>
+                                </details>
                             </div>
                         @empty
                             <p class="py-6 text-sm text-gray-500">Nessuna fattura registrata.</p>
