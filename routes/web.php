@@ -17,6 +17,9 @@ Route::get('/dashboard', DashboardController::class)
 
 Route::middleware('auth')->group(function () {
     Route::resource('patients', PatientController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::get('/patients/{patient}/sessions', [PatientController::class, 'sessions'])->name('patients.sessions.index');
+    Route::get('/patients/{patient}/invoices', [PatientController::class, 'invoices'])->name('patients.invoices.index');
+    Route::get('/patients/{patient}/privacy', [PatientController::class, 'privacy'])->name('patients.privacy.index');
     Route::resource('appointments', AppointmentController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::post('/patients/{patient}/medical-record', [PatientController::class, 'storeMedicalRecord'])
         ->name('patients.medical-record.store');

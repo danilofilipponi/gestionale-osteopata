@@ -47,11 +47,22 @@ class PatientController extends Controller
 
     public function show(Patient $patient)
     {
-        $this->authorizePatient($patient);
+        return $this->folderSection($patient, 'anagrafica');
+    }
 
-        $patient->load(['medicalRecord', 'treatmentSessions', 'invoices', 'privacyConsent']);
+    public function sessions(Patient $patient)
+    {
+        return $this->folderSection($patient, 'sedute');
+    }
 
-        return view('patients.show', compact('patient'));
+    public function invoices(Patient $patient)
+    {
+        return $this->folderSection($patient, 'fatture');
+    }
+
+    public function privacy(Patient $patient)
+    {
+        return $this->folderSection($patient, 'privacy');
     }
 
     public function edit(Patient $patient)
@@ -265,6 +276,15 @@ class PatientController extends Controller
     private function authorizePatient(Patient $patient): void
     {
         abort_unless($patient->user_id === Auth::id(), 404);
+    }
+
+    private function folderSection(Patient $patient, string $section)
+    {
+        $this->authorizePatient($patient);
+
+        $patient->load(['medicalRecord', 'treatmentSessions', 'invoices', 'privacyConsent']);
+
+        return view('patients.show', compact('patient', 'section'));
     }
 
     private function authorizePatientRelation(Patient $patient, int $patientId): void

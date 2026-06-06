@@ -81,7 +81,7 @@
                     <h3 class="font-semibold text-gray-900">Fatture da emettere/incassare</h3>
                     <div class="mt-4 divide-y divide-gray-100">
                         @forelse ($openInvoices as $invoice)
-                            <a href="{{ route('patients.show', $invoice->patient) }}#fatture" class="block py-3">
+                            <a href="{{ route('patients.invoices.index', $invoice->patient) }}" class="block py-3">
                                 <div class="flex items-center justify-between gap-4">
                                     <span class="font-medium text-gray-900">{{ $invoice->patient->full_name }}</span>
                                     <span class="text-sm text-gray-500">EUR {{ number_format($invoice->amount, 2, ',', '.') }}</span>

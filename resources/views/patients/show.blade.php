@@ -19,12 +19,13 @@
             @endif
 
             <div class="grid gap-4 md:grid-cols-4">
-                <a href="#anagrafica" class="rounded-lg bg-white p-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Anagrafica</a>
-                <a href="#sedute" class="rounded-lg bg-white p-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Storico sedute</a>
-                <a href="#fatture" class="rounded-lg bg-white p-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Storico fatture</a>
-                <a href="#privacy" class="rounded-lg bg-white p-4 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50">Privacy e consenso</a>
+                <a href="{{ route('patients.show', $patient) }}" class="rounded-lg p-4 text-sm font-medium shadow-sm {{ $section === 'anagrafica' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Anagrafica</a>
+                <a href="{{ route('patients.sessions.index', $patient) }}" class="rounded-lg p-4 text-sm font-medium shadow-sm {{ $section === 'sedute' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Storico sedute</a>
+                <a href="{{ route('patients.invoices.index', $patient) }}" class="rounded-lg p-4 text-sm font-medium shadow-sm {{ $section === 'fatture' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Storico fatture</a>
+                <a href="{{ route('patients.privacy.index', $patient) }}" class="rounded-lg p-4 text-sm font-medium shadow-sm {{ $section === 'privacy' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Privacy e consenso</a>
             </div>
 
+            @if ($section === 'anagrafica')
             <section id="anagrafica" class="rounded-lg bg-white p-6 shadow-sm">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
@@ -123,7 +124,9 @@
                     </form>
                 </div>
             </section>
+            @endif
 
+            @if ($section === 'sedute')
             <section id="sedute" class="rounded-lg bg-white p-6 shadow-sm">
                 <h3 class="font-semibold text-gray-900">Storico delle sedute</h3>
                 <form method="POST" action="{{ route('patients.sessions.store', $patient) }}" class="mt-4 space-y-4 rounded-md border border-gray-100 p-4">
@@ -205,7 +208,9 @@
                     @endforelse
                 </div>
             </section>
+            @endif
 
+            @if ($section === 'fatture')
             <section id="fatture" class="rounded-lg bg-white p-6 shadow-sm">
                 <h3 class="font-semibold text-gray-900">Storico delle fatture emesse</h3>
                 <form method="POST" action="{{ route('patients.invoices.store', $patient) }}" class="mt-4 space-y-4 rounded-md border border-gray-100 p-4">
@@ -273,7 +278,9 @@
                     @endforelse
                 </div>
             </section>
+            @endif
 
+            @if ($section === 'privacy')
             <section id="privacy" class="rounded-lg bg-white p-6 shadow-sm">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
@@ -326,6 +333,7 @@
                     </div>
                 </form>
             </section>
+            @endif
         </div>
     </div>
 </x-app-layout>

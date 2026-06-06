@@ -11,7 +11,7 @@ class PatientFolderTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_patient_folder_contains_main_sections(): void
+    public function test_patient_folder_navigation_links_to_separate_sections(): void
     {
         $user = User::factory()->create();
         $patient = Patient::create([
@@ -24,9 +24,44 @@ class PatientFolderTest extends TestCase
             ->get(route('patients.show', $patient))
             ->assertOk()
             ->assertSee('Anagrafica')
-            ->assertSee('Storico delle sedute')
-            ->assertSee('Storico delle fatture emesse')
+            ->assertSee('Storico sedute')
+            ->assertSee('Storico fatture')
             ->assertSee('Privacy e consenso');
+    }
+
+    public function test_patient_folder_sections_are_separate_pages(): void
+    {
+        $user = User::factory()->create();
+        $patient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('patients.show', $patient))
+            ->assertOk()
+            ->assertSee('Dati clinici iniziali')
+            ->assertDontSee('Registra seduta')
+            ->assertDontSee('Registra fattura');
+
+        $this->actingAs($user)
+            ->get(route('patients.sessions.index', $patient))
+            ->assertOk()
+            ->assertSee('Storico delle sedute')
+            ->assertDontSee('Dati clinici iniziali');
+
+        $this->actingAs($user)
+            ->get(route('patients.invoices.index', $patient))
+            ->assertOk()
+            ->assertSee('Storico delle fatture emesse')
+            ->assertDontSee('Dati clinici iniziali');
+
+        $this->actingAs($user)
+            ->get(route('patients.privacy.index', $patient))
+            ->assertOk()
+            ->assertSee('Privacy e consenso')
+            ->assertDontSee('Dati clinici iniziali');
     }
 
     public function test_privacy_consent_can_be_saved(): void
