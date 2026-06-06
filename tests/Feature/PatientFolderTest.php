@@ -58,4 +58,57 @@ class PatientFolderTest extends TestCase
             'document_version' => 'privacy-v1',
         ]);
     }
+
+    public function test_extended_medical_record_can_be_saved(): void
+    {
+        $user = User::factory()->create();
+        $patient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('patients.medical-record.store', $patient), [
+                'reason_for_visit' => 'Lombalgia',
+                'symptoms_started_at' => '2026-06-01',
+                'pain_description' => 'Dolore lombare',
+                'irradiation' => 'Gamba destra',
+                'clinical_tests' => 'Test positivo',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('medical_records', [
+            'patient_id' => $patient->id,
+            'reason_for_visit' => 'Lombalgia',
+            'pain_description' => 'Dolore lombare',
+        ]);
+    }
+
+    public function test_invoice_number_is_generated_when_missing(): void
+    {
+        $user = User::factory()->create();
+        $patient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('patients.invoices.store', $patient), [
+                'issued_at' => '2026-06-06',
+                'service' => 'Seduta osteopatica',
+                'amount' => '70',
+                'payment_method' => 'Carta',
+                'status' => 'paid',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('invoices', [
+            'patient_id' => $patient->id,
+            'number' => '0001/2026',
+            'progressive_number' => 1,
+            'year' => 2026,
+        ]);
+    }
 }

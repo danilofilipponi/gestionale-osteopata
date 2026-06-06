@@ -5,26 +5,24 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class TreatmentSession extends Model
+class Appointment extends Model
 {
     protected $fillable = [
-        'session_date',
+        'patient_id',
         'title',
-        'objective',
-        'treatment',
-        'pain_level',
-        'outcome',
+        'starts_at',
+        'ends_at',
+        'type',
+        'status',
+        'color',
         'notes',
-        'fee',
-        'paid',
     ];
 
     protected function casts(): array
     {
         return [
-            'session_date' => 'date',
-            'fee' => 'decimal:2',
-            'paid' => 'boolean',
+            'starts_at' => 'datetime',
+            'ends_at' => 'datetime',
         ];
     }
 

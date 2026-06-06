@@ -9,8 +9,12 @@ class Invoice extends Model
 {
     protected $fillable = [
         'number',
+        'year',
+        'progressive_number',
         'issued_at',
+        'service',
         'amount',
+        'payment_method',
         'status',
         'description',
     ];

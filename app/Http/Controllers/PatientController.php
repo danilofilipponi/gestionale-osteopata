@@ -89,6 +89,23 @@ class PatientController extends Controller
 
         $patient->medicalRecord()->updateOrCreate([], $request->validate([
             'reason_for_visit' => ['nullable', 'string'],
+            'symptoms_started_at' => ['nullable', 'date'],
+            'pain_description' => ['nullable', 'string'],
+            'irradiation' => ['nullable', 'string'],
+            'exams' => ['nullable', 'string'],
+            'previous_treatments' => ['nullable', 'string'],
+            'traumas' => ['nullable', 'string'],
+            'surgeries' => ['nullable', 'string'],
+            'visceral_issues' => ['nullable', 'string'],
+            'prosthesis_and_devices' => ['nullable', 'string'],
+            'family_history' => ['nullable', 'string'],
+            'birth_history' => ['nullable', 'string'],
+            'lifestyle' => ['nullable', 'string'],
+            'sport' => ['nullable', 'string'],
+            'physical_sphere' => ['nullable', 'string'],
+            'psychological_sphere' => ['nullable', 'string'],
+            'medications' => ['nullable', 'string'],
+            'clinical_tests' => ['nullable', 'string'],
             'anamnesis' => ['nullable', 'string'],
             'diagnostic_notes' => ['nullable', 'string'],
             'treatment_plan' => ['nullable', 'string'],
@@ -158,7 +175,7 @@ class PatientController extends Controller
         $this->authorizePatient($patient);
         $this->authorizePatientRelation($patient, $invoice->patient_id);
 
-        $invoice->update($this->validatedInvoice($request));
+        $invoice->update($this->invoiceData($request, $invoice));
 
         return back()->with('status', 'Fattura aggiornata.');
     }
@@ -180,7 +197,9 @@ class PatientController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'objective' => ['nullable', 'string'],
             'treatment' => ['nullable', 'string'],
+            'pain_level' => ['nullable', 'integer', 'min:1', 'max:10'],
             'outcome' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string'],
             'fee' => ['nullable', 'numeric', 'min:0'],
             'paid' => ['nullable', 'boolean'],
         ]);
@@ -190,7 +209,7 @@ class PatientController extends Controller
     {
         $this->authorizePatient($patient);
 
-        $patient->invoices()->create($this->validatedInvoice($request));
+        $patient->invoices()->create($this->invoiceData($request));
 
         return back()->with('status', 'Fattura registrata.');
     }
@@ -200,10 +219,27 @@ class PatientController extends Controller
         return $request->validate([
             'number' => ['nullable', 'string', 'max:255'],
             'issued_at' => ['required', 'date'],
+            'service' => ['nullable', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'in:draft,sent,paid,cancelled'],
             'description' => ['nullable', 'string'],
         ]);
+    }
+
+    private function invoiceData(Request $request, ?Invoice $invoice = null): array
+    {
+        $data = $this->validatedInvoice($request);
+        $issuedAt = now()->parse($data['issued_at']);
+        $data['year'] = (int) $issuedAt->format('Y');
+
+        if (blank($data['number'] ?? null)) {
+            $data['progressive_number'] = $invoice?->progressive_number
+                ?? ((int) Invoice::where('year', $data['year'])->max('progressive_number') + 1);
+            $data['number'] = str_pad((string) $data['progressive_number'], 4, '0', STR_PAD_LEFT).'/'.$data['year'];
+        }
+
+        return $data;
     }
 
     private function validatedPatient(Request $request): array
@@ -212,10 +248,16 @@ class PatientController extends Controller
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'birth_date' => ['nullable', 'date'],
+            'gender' => ['nullable', 'string', 'max:50'],
+            'birth_place' => ['nullable', 'string', 'max:255'],
             'fiscal_code' => ['nullable', 'string', 'max:16'],
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
+            'profession' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'province' => ['nullable', 'string', 'max:2'],
+            'postal_code' => ['nullable', 'string', 'max:10'],
             'notes' => ['nullable', 'string'],
         ]);
     }

@@ -41,7 +41,15 @@
                     </div>
                     <div class="rounded-md border border-gray-100 p-4">
                         <dt class="text-xs font-medium uppercase text-gray-500">Data di nascita</dt>
-                        <dd class="mt-1 text-sm font-medium text-gray-900">{{ $patient->birth_date?->format('d/m/Y') ?: 'Non inserita' }}</dd>
+                        <dd class="mt-1 text-sm font-medium text-gray-900">{{ $patient->birth_date?->format('d/m/Y') ?: 'Non inserita' }}{{ $patient->age ? ' - '.$patient->age.' anni' : '' }}</dd>
+                    </div>
+                    <div class="rounded-md border border-gray-100 p-4">
+                        <dt class="text-xs font-medium uppercase text-gray-500">Sesso</dt>
+                        <dd class="mt-1 text-sm font-medium text-gray-900">{{ $patient->gender ?: 'Non inserito' }}</dd>
+                    </div>
+                    <div class="rounded-md border border-gray-100 p-4">
+                        <dt class="text-xs font-medium uppercase text-gray-500">Luogo di nascita</dt>
+                        <dd class="mt-1 text-sm font-medium text-gray-900">{{ $patient->birth_place ?: 'Non inserito' }}</dd>
                     </div>
                     <div class="rounded-md border border-gray-100 p-4">
                         <dt class="text-xs font-medium uppercase text-gray-500">Codice fiscale</dt>
@@ -56,8 +64,12 @@
                         <dd class="mt-1 text-sm font-medium text-gray-900">{{ $patient->email ?: 'Non inserita' }}</dd>
                     </div>
                     <div class="rounded-md border border-gray-100 p-4">
+                        <dt class="text-xs font-medium uppercase text-gray-500">Professione</dt>
+                        <dd class="mt-1 text-sm font-medium text-gray-900">{{ $patient->profession ?: 'Non inserita' }}</dd>
+                    </div>
+                    <div class="rounded-md border border-gray-100 p-4">
                         <dt class="text-xs font-medium uppercase text-gray-500">Indirizzo</dt>
-                        <dd class="mt-1 text-sm font-medium text-gray-900">{{ $patient->address ?: 'Non inserito' }}</dd>
+                        <dd class="mt-1 text-sm font-medium text-gray-900">{{ collect([$patient->address, $patient->postal_code, $patient->city, $patient->province])->filter()->join(' ') ?: 'Non inserito' }}</dd>
                     </div>
                 </dl>
 
@@ -74,14 +86,35 @@
                         @csrf
                         @foreach ([
                             'reason_for_visit' => 'Motivo della visita',
+                            'symptoms_started_at' => 'Data inizio sintomi',
+                            'pain_description' => 'Descrizione dolore/problema',
+                            'irradiation' => 'Irradiazione',
+                            'exams' => 'Esami/indagini',
+                            'previous_treatments' => 'Trattamenti precedenti',
+                            'traumas' => 'Traumi',
+                            'surgeries' => 'Interventi chirurgici',
+                            'visceral_issues' => 'Problematiche viscerali',
+                            'prosthesis_and_devices' => 'Protesi, plantari, bite, ortodonzia',
+                            'family_history' => 'Anamnesi familiare',
+                            'birth_history' => 'Anamnesi parto',
+                            'lifestyle' => 'Abitudini di vita',
+                            'sport' => 'Sport',
+                            'physical_sphere' => 'Sfera fisica',
+                            'psychological_sphere' => 'Sfera psichica',
+                            'medications' => 'Farmaci',
+                            'clinical_tests' => 'Test clinici',
                             'anamnesis' => 'Anamnesi',
                             'diagnostic_notes' => 'Valutazione',
                             'treatment_plan' => 'Piano di trattamento',
                             'contraindications' => 'Controindicazioni'
                         ] as $field => $label)
-                            <div class="{{ $field === 'contraindications' ? 'md:col-span-2' : '' }}">
+                            <div class="{{ in_array($field, ['contraindications', 'pain_description', 'clinical_tests'], true) ? 'md:col-span-2' : '' }}">
                                 <x-input-label :for="$field" :value="$label" />
-                                <textarea id="{{ $field }}" name="{{ $field }}" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">{{ old($field, $patient->medicalRecord?->{$field}) }}</textarea>
+                                @if ($field === 'symptoms_started_at')
+                                    <x-text-input id="{{ $field }}" name="{{ $field }}" type="date" class="mt-1 block w-full" :value="old($field, $patient->medicalRecord?->{$field}?->toDateString())" />
+                                @else
+                                    <textarea id="{{ $field }}" name="{{ $field }}" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">{{ old($field, $patient->medicalRecord?->{$field}) }}</textarea>
+                                @endif
                             </div>
                         @endforeach
                         <div class="md:col-span-2">
@@ -107,7 +140,12 @@
                     </div>
                     <textarea name="objective" rows="2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Obiettivo">{{ old('objective') }}</textarea>
                     <textarea name="treatment" rows="3" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Trattamento eseguito">{{ old('treatment') }}</textarea>
+                    <div>
+                        <x-input-label for="pain_level" value="Dolore 1-10" />
+                        <x-text-input id="pain_level" name="pain_level" type="number" min="1" max="10" class="mt-1 block w-full" :value="old('pain_level')" />
+                    </div>
                     <textarea name="outcome" rows="2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Esito e indicazioni">{{ old('outcome') }}</textarea>
+                    <textarea name="notes" rows="2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Note">{{ old('notes') }}</textarea>
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div class="flex items-center gap-4">
                             <x-text-input name="fee" type="number" step="0.01" min="0" class="w-40" placeholder="Importo" :value="old('fee')" />
@@ -128,7 +166,7 @@
                                 <p class="text-sm text-gray-500">{{ $session->session_date->format('d/m/Y') }}</p>
                             </div>
                             <p class="mt-2 text-sm text-gray-600">{{ $session->treatment ?: 'Nessun dettaglio trattamento inserito.' }}</p>
-                            <p class="mt-2 text-sm text-gray-500">EUR {{ number_format($session->fee ?? 0, 2, ',', '.') }} - {{ $session->paid ? 'Pagata' : 'Da saldare' }}</p>
+                            <p class="mt-2 text-sm text-gray-500">Dolore: {{ $session->pain_level ?: 'n.d.' }}/10 - EUR {{ number_format($session->fee ?? 0, 2, ',', '.') }} - {{ $session->paid ? 'Pagata' : 'Da saldare' }}</p>
 
                             <details class="mt-3">
                                 <summary class="cursor-pointer text-sm font-medium text-gray-700">Modifica seduta</summary>
@@ -141,7 +179,9 @@
                                     </div>
                                     <textarea name="objective" rows="2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Obiettivo">{{ $session->objective }}</textarea>
                                     <textarea name="treatment" rows="3" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Trattamento eseguito">{{ $session->treatment }}</textarea>
+                                    <x-text-input name="pain_level" type="number" min="1" max="10" placeholder="Dolore 1-10" :value="$session->pain_level" />
                                     <textarea name="outcome" rows="2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Esito e indicazioni">{{ $session->outcome }}</textarea>
+                                    <textarea name="notes" rows="2" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900" placeholder="Note">{{ $session->notes }}</textarea>
                                     <div class="flex flex-wrap items-center justify-between gap-3">
                                         <div class="flex items-center gap-4">
                                             <x-text-input name="fee" type="number" step="0.01" min="0" class="w-40" placeholder="Importo" :value="$session->fee" />
@@ -173,7 +213,9 @@
                     <div class="grid gap-4 md:grid-cols-4">
                         <x-text-input name="number" placeholder="Numero fattura" :value="old('number')" />
                         <x-text-input name="issued_at" type="date" :value="old('issued_at', now()->toDateString())" required />
+                        <x-text-input name="service" placeholder="Prestazione" :value="old('service', 'Seduta osteopatica')" />
                         <x-text-input name="amount" type="number" step="0.01" min="0" placeholder="Importo" :value="old('amount')" required />
+                        <x-text-input name="payment_method" placeholder="Pagamento" :value="old('payment_method')" />
                         <select name="status" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
                             <option value="draft">Bozza</option>
                             <option value="sent">Inviata</option>
@@ -191,7 +233,7 @@
                             <div class="flex items-center justify-between gap-4">
                                 <div>
                                     <p class="font-medium text-gray-900">{{ $invoice->number ?: 'Fattura senza numero' }}</p>
-                                    <p class="text-sm text-gray-500">{{ $invoice->issued_at->format('d/m/Y') }} - {{ $invoice->status }}</p>
+                                    <p class="text-sm text-gray-500">{{ $invoice->issued_at->format('d/m/Y') }} - {{ $invoice->service ?: 'Prestazione non indicata' }} - {{ $invoice->status }}</p>
                                 </div>
                                 <p class="font-semibold text-gray-900">EUR {{ number_format($invoice->amount, 2, ',', '.') }}</p>
                             </div>
@@ -204,7 +246,9 @@
                                     <div class="grid gap-3 md:grid-cols-2">
                                         <x-text-input name="number" placeholder="Numero fattura" :value="$invoice->number" />
                                         <x-text-input name="issued_at" type="date" :value="$invoice->issued_at->toDateString()" required />
+                                        <x-text-input name="service" placeholder="Prestazione" :value="$invoice->service" />
                                         <x-text-input name="amount" type="number" step="0.01" min="0" placeholder="Importo" :value="$invoice->amount" required />
+                                        <x-text-input name="payment_method" placeholder="Pagamento" :value="$invoice->payment_method" />
                                         <select name="status" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
                                             <option value="draft" @selected($invoice->status === 'draft')>Bozza</option>
                                             <option value="sent" @selected($invoice->status === 'sent')>Inviata</option>

@@ -14,10 +14,16 @@ class Patient extends Model
         'first_name',
         'last_name',
         'birth_date',
+        'gender',
+        'birth_place',
         'fiscal_code',
         'phone',
         'email',
+        'profession',
         'address',
+        'city',
+        'province',
+        'postal_code',
         'notes',
     ];
 
@@ -53,8 +59,23 @@ class Patient extends Model
         return $this->hasOne(PrivacyConsent::class);
     }
 
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class)->latest('starts_at');
+    }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class)->latest('scheduled_at');
+    }
+
     public function getFullNameAttribute(): string
     {
         return trim($this->first_name.' '.$this->last_name);
+    }
+
+    public function getAgeAttribute(): ?int
+    {
+        return $this->birth_date?->age;
     }
 }
