@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SettingsController extends Controller
 {
@@ -12,6 +14,7 @@ class SettingsController extends Controller
         return view('settings.edit', [
             'settings' => $this->settings(),
             'values' => $this->values(),
+            'users' => User::orderBy('name')->get(),
         ]);
     }
 
@@ -24,6 +27,45 @@ class SettingsController extends Controller
         }
 
         return back()->with('status', 'Impostazioni aggiornate.');
+    }
+
+    public function storeUser(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        User::create($validated);
+
+        return back()->with('status', 'Utente creato correttamente.');
+    }
+
+    public function updateUser(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (blank($validated['password'] ?? null)) {
+            unset($validated['password']);
+        }
+
+        $user->update($validated);
+
+        return back()->with('status', 'Utente aggiornato correttamente.');
+    }
+
+    public function destroyUser(User $user)
+    {
+        abort_if(User::count() <= 1, 422, 'Non puoi eliminare l\'ultimo utente.');
+
+        $user->delete();
+
+        return back()->with('status', 'Utente eliminato.');
     }
 
     private function values(): array
