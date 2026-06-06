@@ -49,7 +49,7 @@ class PatientController extends Controller
     {
         $this->authorizePatient($patient);
 
-        $patient->load(['medicalRecord', 'treatmentSessions', 'invoices']);
+        $patient->load(['medicalRecord', 'treatmentSessions', 'invoices', 'privacyConsent']);
 
         return view('patients.show', compact('patient'));
     }
@@ -96,6 +96,26 @@ class PatientController extends Controller
         ]));
 
         return back()->with('status', 'Cartella clinica aggiornata.');
+    }
+
+    public function storePrivacyConsent(Request $request, Patient $patient)
+    {
+        $this->authorizePatient($patient);
+
+        $validated = $request->validate([
+            'signed_at' => ['nullable', 'date'],
+            'signature_method' => ['nullable', 'string', 'max:255'],
+            'document_version' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $patient->privacyConsent()->updateOrCreate([], $validated + [
+            'privacy_policy_accepted' => $request->boolean('privacy_policy_accepted'),
+            'health_data_processing_accepted' => $request->boolean('health_data_processing_accepted'),
+            'marketing_accepted' => $request->boolean('marketing_accepted'),
+        ]);
+
+        return back()->with('status', 'Consenso privacy aggiornato.');
     }
 
     public function storeTreatmentSession(Request $request, Patient $patient)

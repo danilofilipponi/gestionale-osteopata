@@ -48,6 +48,11 @@ class Patient extends Model
         return $this->hasMany(Invoice::class)->latest('issued_at');
     }
 
+    public function privacyConsent(): HasOne
+    {
+        return $this->hasOne(PrivacyConsent::class);
+    }
+
     public function getFullNameAttribute(): string
     {
         return trim($this->first_name.' '.$this->last_name);

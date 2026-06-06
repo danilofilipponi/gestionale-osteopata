@@ -18,6 +18,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('patients', PatientController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('/patients/{patient}/medical-record', [PatientController::class, 'storeMedicalRecord'])
         ->name('patients.medical-record.store');
+    Route::post('/patients/{patient}/privacy-consent', [PatientController::class, 'storePrivacyConsent'])
+        ->name('patients.privacy-consent.store');
     Route::post('/patients/{patient}/sessions', [PatientController::class, 'storeTreatmentSession'])
         ->name('patients.sessions.store');
     Route::patch('/patients/{patient}/sessions/{session}', [PatientController::class, 'updateTreatmentSession'])
