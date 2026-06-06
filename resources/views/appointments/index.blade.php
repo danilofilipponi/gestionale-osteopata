@@ -7,23 +7,23 @@
             </div>
             <div class="flex gap-2">
                 @foreach (['day' => 'Giorno', 'week' => 'Settimana', 'month' => 'Mese'] as $key => $label)
-                    <a href="{{ route('appointments.index', ['view' => $key, 'date' => $date->toDateString()]) }}" class="rounded-md px-3 py-2 text-sm font-medium {{ $view === $key ? 'bg-gray-900 text-white' : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">{{ $label }}</a>
+                    <a href="{{ route('appointments.index', ['view' => $key, 'date' => $date->toDateString()]) }}" class="rounded-xl px-3 py-2 text-sm font-bold {{ $view === $key ? 'bg-sage text-white' : 'border border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">{{ $label }}</a>
                 @endforeach
             </div>
         </div>
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto space-y-6 sm:px-6 lg:px-8">
+        <div class="app-section space-y-6">
             @if (session('status'))
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
             @endif
 
-            <section class="rounded-lg bg-white p-6 shadow-sm">
+            <section class="app-card p-6">
                 <h3 class="font-semibold text-gray-900">Nuovo appuntamento</h3>
                 <form method="POST" action="{{ route('appointments.store') }}" class="mt-4 grid gap-4 md:grid-cols-4">
                     @csrf
-                    <select name="patient_id" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
+                    <select name="patient_id" class="app-field">
                         <option value="">Impegno personale</option>
                         @foreach ($patients as $patient)
                             <option value="{{ $patient->id }}">{{ $patient->full_name }}</option>
@@ -32,13 +32,13 @@
                     <x-text-input name="title" placeholder="Titolo" required />
                     <x-text-input name="starts_at" type="datetime-local" required />
                     <x-text-input name="ends_at" type="datetime-local" required />
-                    <select name="type" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
+                    <select name="type" class="app-field">
                         <option value="visit">Visita</option>
                         <option value="personal">Personale</option>
                         <option value="holiday">Ferie</option>
                         <option value="absence">Assenza</option>
                     </select>
-                    <select name="status" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
+                    <select name="status" class="app-field">
                         <option value="scheduled">Programmato</option>
                         <option value="confirmed">Confermato</option>
                         <option value="completed">Svolto</option>
@@ -53,7 +53,7 @@
                 </form>
             </section>
 
-            <section class="rounded-lg bg-white p-6 shadow-sm">
+            <section class="app-card p-6">
                 <h3 class="font-semibold text-gray-900">Appuntamenti</h3>
                 <div class="mt-4 divide-y divide-gray-100">
                     @forelse ($appointments as $appointment)

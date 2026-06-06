@@ -5,12 +5,12 @@
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">Impostazioni</h2>
                 <p class="mt-1 text-sm text-gray-500">Configurazione di base dello studio e area amministrativa.</p>
             </div>
-            <a href="{{ route('profile.edit') }}" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Gestione account</a>
+            <a href="{{ route('profile.edit') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Gestione account</a>
         </div>
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto space-y-6 sm:px-6 lg:px-8">
+        <div class="app-section space-y-6">
             @if (session('status'))
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
             @endif
@@ -26,7 +26,7 @@
                             'billing' => 'Fatturazione',
                             'operations' => 'Preferenze operative',
                         ] as $group => $title)
-                            <section class="rounded-lg bg-white p-6 shadow-sm">
+                            <section class="app-card p-6">
                                 <h3 class="font-semibold text-gray-900">{{ $title }}</h3>
                                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                                     @foreach ($settings as $key => $setting)
@@ -53,7 +53,7 @@
                         </div>
                     </form>
 
-                    <section class="rounded-lg bg-white p-6 shadow-sm">
+                    <section class="app-card p-6">
                         <h3 class="font-semibold text-gray-900">Nuovo utente</h3>
                         <form method="POST" action="{{ route('settings.users.store') }}" class="mt-4 grid gap-4 md:grid-cols-2">
                             @csrf
@@ -82,7 +82,7 @@
                         </form>
                     </section>
 
-                    <section class="rounded-lg bg-white p-6 shadow-sm">
+                    <section class="app-card p-6">
                         <h3 class="font-semibold text-gray-900">Utenti esistenti</h3>
                         <div class="mt-4 divide-y divide-gray-100">
                             @foreach ($users as $user)
@@ -127,7 +127,7 @@
                 </div>
 
                 <aside class="space-y-6">
-                    <section class="rounded-lg bg-white p-6 shadow-sm">
+                    <section class="app-card p-6">
                         <h3 class="font-semibold text-gray-900">Area amministrativa</h3>
                         <div class="mt-4 space-y-3">
                             <a href="{{ route('profile.edit') }}" class="block rounded-md border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Il mio account</a>
@@ -138,7 +138,7 @@
                         </div>
                     </section>
 
-                    <section class="rounded-lg bg-white p-6 shadow-sm">
+                    <section class="app-card p-6">
                         <h3 class="font-semibold text-gray-900">Spunti prossimi</h3>
                         <ul class="mt-4 space-y-3 text-sm text-gray-600">
                             <li>Ruoli: amministratore, osteopata, segreteria.</li>

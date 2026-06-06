@@ -6,27 +6,27 @@
                 <p class="mt-1 text-sm text-gray-500">{{ $patient->phone ?: 'Telefono non inserito' }} - {{ $patient->email ?: 'Email non inserita' }}</p>
             </div>
             <div class="flex flex-wrap gap-3">
-                <a href="{{ route('patients.edit', $patient) }}" class="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-800">Modifica anagrafica</a>
-                <a href="{{ route('patients.index') }}" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Torna ai pazienti</a>
+                <a href="{{ route('patients.edit', $patient) }}" class="rounded-xl bg-sage px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75]">Modifica anagrafica</a>
+                <a href="{{ route('patients.index') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Torna ai pazienti</a>
             </div>
         </div>
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto space-y-6 sm:px-6 lg:px-8">
+        <div class="app-section space-y-6">
             @if (session('status'))
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
             @endif
 
             <div class="grid gap-4 md:grid-cols-4">
-                <a href="{{ route('patients.show', $patient) }}" class="rounded-lg p-4 text-sm font-medium shadow-sm {{ $section === 'anagrafica' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Anagrafica</a>
-                <a href="{{ route('patients.sessions.index', $patient) }}" class="rounded-lg p-4 text-sm font-medium shadow-sm {{ $section === 'sedute' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Storico sedute</a>
-                <a href="{{ route('patients.invoices.index', $patient) }}" class="rounded-lg p-4 text-sm font-medium shadow-sm {{ $section === 'fatture' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Storico fatture</a>
-                <a href="{{ route('patients.privacy.index', $patient) }}" class="rounded-lg p-4 text-sm font-medium shadow-sm {{ $section === 'privacy' ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Privacy e consenso</a>
+                <a href="{{ route('patients.show', $patient) }}" class="rounded-2xl border p-4 text-sm font-bold shadow-card {{ $section === 'anagrafica' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Anagrafica</a>
+                <a href="{{ route('patients.sessions.index', $patient) }}" class="rounded-2xl border p-4 text-sm font-bold shadow-card {{ $section === 'sedute' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Storico sedute</a>
+                <a href="{{ route('patients.invoices.index', $patient) }}" class="rounded-2xl border p-4 text-sm font-bold shadow-card {{ $section === 'fatture' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Storico fatture</a>
+                <a href="{{ route('patients.privacy.index', $patient) }}" class="rounded-2xl border p-4 text-sm font-bold shadow-card {{ $section === 'privacy' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Privacy e consenso</a>
             </div>
 
             @if ($section === 'anagrafica')
-            <section id="anagrafica" class="rounded-lg bg-white p-6 shadow-sm">
+            <section id="anagrafica" class="app-card p-6">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h3 class="font-semibold text-gray-900">Anagrafica</h3>
@@ -127,7 +127,7 @@
             @endif
 
             @if ($section === 'sedute')
-            <section id="sedute" class="rounded-lg bg-white p-6 shadow-sm">
+            <section id="sedute" class="app-card p-6">
                 <h3 class="font-semibold text-gray-900">Storico delle sedute</h3>
                 <form method="POST" action="{{ route('patients.sessions.store', $patient) }}" class="mt-4 space-y-4 rounded-md border border-gray-100 p-4">
                     @csrf
@@ -211,7 +211,7 @@
             @endif
 
             @if ($section === 'fatture')
-            <section id="fatture" class="rounded-lg bg-white p-6 shadow-sm">
+            <section id="fatture" class="app-card p-6">
                 <h3 class="font-semibold text-gray-900">Storico delle fatture emesse</h3>
                 <form method="POST" action="{{ route('patients.invoices.store', $patient) }}" class="mt-4 space-y-4 rounded-md border border-gray-100 p-4">
                     @csrf
@@ -281,7 +281,7 @@
             @endif
 
             @if ($section === 'privacy')
-            <section id="privacy" class="rounded-lg bg-white p-6 shadow-sm">
+            <section id="privacy" class="app-card p-6">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h3 class="font-semibold text-gray-900">Privacy e consenso</h3>
