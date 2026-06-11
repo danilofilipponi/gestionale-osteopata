@@ -18,6 +18,7 @@ class MedicalRecord extends Model
         'surgeries',
         'visceral_issues',
         'prosthesis_and_devices',
+        'orthodontics',
         'family_history',
         'birth_history',
         'lifestyle',
@@ -34,9 +35,7 @@ class MedicalRecord extends Model
 
     protected function casts(): array
     {
-        return [
-            'symptoms_started_at' => 'date',
-        ];
+        return [];
     }
 
     public function patient(): BelongsTo

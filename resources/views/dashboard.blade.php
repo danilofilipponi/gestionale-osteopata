@@ -52,7 +52,7 @@
                                     <span class="font-medium text-gray-900">{{ $appointment->title }}</span>
                                     <span class="text-sm text-gray-500">{{ $appointment->starts_at->format('H:i') }}</span>
                                 </div>
-                                <p class="mt-1 text-sm text-gray-600">{{ $appointment->patient?->full_name ?: 'Impegno personale' }}</p>
+                                <p class="mt-1 text-sm text-gray-600">{{ $appointment->patient?->list_name ?: 'Impegno personale' }}</p>
                             </div>
                         @empty
                             <p class="py-6 text-sm text-gray-500">Nessun appuntamento oggi.</p>
@@ -68,7 +68,7 @@
                     <div class="mt-4 divide-y divide-gray-100">
                         @forelse ($recentPatients as $patient)
                             <a href="{{ route('patients.show', $patient) }}" class="flex items-center justify-between py-3">
-                                <span class="font-medium text-gray-900">{{ $patient->full_name }}</span>
+                                <span class="font-medium text-gray-900">{{ $patient->list_name }}</span>
                                 <span class="text-sm text-gray-500">{{ $patient->phone ?: 'Telefono non inserito' }}</span>
                             </a>
                         @empty
@@ -83,7 +83,7 @@
                         @forelse ($openInvoices as $invoice)
                             <a href="{{ route('patients.invoices.index', $invoice->patient) }}" class="block py-3">
                                 <div class="flex items-center justify-between gap-4">
-                                    <span class="font-medium text-gray-900">{{ $invoice->patient->full_name }}</span>
+                                    <span class="font-medium text-gray-900">{{ $invoice->patient->list_name }}</span>
                                     <span class="text-sm text-gray-500">EUR {{ number_format($invoice->amount, 2, ',', '.') }}</span>
                                 </div>
                                 <p class="mt-1 text-sm text-gray-600">{{ $invoice->number ?: 'Senza numero' }} - {{ $invoice->status }}</p>

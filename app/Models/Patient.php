@@ -11,6 +11,7 @@ class Patient extends Model
 {
     protected $fillable = [
         'user_id',
+        'legacy_patient_id',
         'first_name',
         'last_name',
         'birth_date',
@@ -19,12 +20,20 @@ class Patient extends Model
         'fiscal_code',
         'phone',
         'email',
+        'pec',
         'profession',
+        'country_id',
         'address',
+        'street_number',
         'city',
         'province',
         'postal_code',
         'notes',
+        'customer_type',
+        'telematic_address',
+        'vat_number',
+        'business_name',
+        'eori_code',
     ];
 
     protected function casts(): array
@@ -72,6 +81,11 @@ class Patient extends Model
     public function getFullNameAttribute(): string
     {
         return trim($this->first_name.' '.$this->last_name);
+    }
+
+    public function getListNameAttribute(): string
+    {
+        return trim($this->last_name.' '.$this->first_name) ?: $this->full_name;
     }
 
     public function getAgeAttribute(): ?int

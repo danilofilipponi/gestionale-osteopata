@@ -37,7 +37,7 @@
 
 @layer components {
     .app-card {
-        @apply rounded-2xl border border-line bg-white shadow-card;
+        @apply rounded-2xl border-2 border-line bg-white shadow-card;
     }
 
     .app-section {
@@ -45,6 +45,6 @@
     }
 
     .app-field {
-        @apply rounded-xl border-line bg-white px-3.5 py-3 text-sm text-ink shadow-sm outline-none transition focus:border-sage focus:ring-2 focus:ring-sage/10;
+        @apply rounded-xl border border-line bg-white px-3.5 py-3 text-sm text-ink shadow-sm outline-none transition focus:border-sage focus:ring-2 focus:ring-sage/15;
     }
 }

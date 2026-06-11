@@ -4,10 +4,10 @@
             <div class="flex">
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="flex items-center gap-3 font-semibold text-ink">
-                        <span class="grid h-10 w-10 place-items-center rounded-xl bg-mist text-sm font-bold text-sage">SO</span>
+                        <img src="{{ asset('images/logo-filipponi.png') }}" alt="Danilo Filipponi" class="h-11 w-11 rounded-xl object-contain">
                         <span>
-                            <span class="block leading-tight">Studio Osteopatico</span>
-                            <span class="hidden text-[10px] font-bold uppercase tracking-[.16em] text-muted sm:block">Gestionale sanitario</span>
+                            <span class="block leading-tight">Danilo Filipponi</span>
+                            <span class="hidden text-[10px] font-bold uppercase tracking-[.16em] text-muted sm:block">Riabilitazione - Osteopatia</span>
                         </span>
                     </a>
                 </div>
@@ -21,6 +21,9 @@
                     </x-nav-link>
                     <x-nav-link :href="route('appointments.index')" :active="request()->routeIs('appointments.*')">
                         Agenda
+                    </x-nav-link>
+                    <x-nav-link :href="route('invoices.index')" :active="request()->routeIs('invoices.*')">
+                        Fatture
                     </x-nav-link>
                 </div>
             </div>
@@ -84,6 +87,9 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('appointments.index')" :active="request()->routeIs('appointments.*')">
                 Agenda
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('invoices.index')" :active="request()->routeIs('invoices.*')">
+                Fatture
             </x-responsive-nav-link>
         </div>
 

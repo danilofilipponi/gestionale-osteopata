@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">Pazienti</h2>
             <a href="{{ route('patients.create') }}" class="inline-flex items-center rounded-xl bg-sage px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75]">
                 Nuovo paziente
@@ -20,7 +20,7 @@
                     @forelse ($patients as $patient)
                         <a href="{{ route('patients.show', $patient) }}" class="grid gap-2 px-6 py-4 hover:bg-gray-50 md:grid-cols-4 md:items-center">
                             <div>
-                                <p class="font-semibold text-gray-900">{{ $patient->full_name }}</p>
+                                <p class="font-semibold text-gray-900">{{ $patient->list_name }}</p>
                                 <p class="text-sm text-gray-500">{{ $patient->birth_date?->format('d/m/Y') ?: 'Data di nascita non inserita' }}</p>
                             </div>
                             <p class="text-sm text-gray-700">{{ $patient->phone ?: 'Telefono non inserito' }}</p>

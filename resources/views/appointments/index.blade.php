@@ -26,7 +26,7 @@
                     <select name="patient_id" class="app-field">
                         <option value="">Impegno personale</option>
                         @foreach ($patients as $patient)
-                            <option value="{{ $patient->id }}">{{ $patient->full_name }}</option>
+                            <option value="{{ $patient->id }}">{{ $patient->list_name }}</option>
                         @endforeach
                     </select>
                     <x-text-input name="title" placeholder="Titolo" required />
@@ -64,7 +64,7 @@
                                     <p class="mt-1 text-sm text-gray-500">
                                         {{ $appointment->starts_at->format('d/m/Y H:i') }} - {{ $appointment->ends_at->format('H:i') }}
                                         @if ($appointment->patient)
-                                            - {{ $appointment->patient->full_name }}
+                                            - {{ $appointment->patient->list_name }}
                                         @endif
                                     </p>
                                 </div>
@@ -78,7 +78,7 @@
                                     <select name="patient_id" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
                                         <option value="">Impegno personale</option>
                                         @foreach ($patients as $patient)
-                                            <option value="{{ $patient->id }}" @selected($appointment->patient_id === $patient->id)>{{ $patient->full_name }}</option>
+                                            <option value="{{ $patient->id }}" @selected($appointment->patient_id === $patient->id)>{{ $patient->list_name }}</option>
                                         @endforeach
                                     </select>
                                     <x-text-input name="title" :value="$appointment->title" required />

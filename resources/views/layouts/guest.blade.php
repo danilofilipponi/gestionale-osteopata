@@ -17,11 +17,11 @@
     <body class="font-sans text-ink antialiased bg-[#f4f8f7]">
         <div class="min-h-screen grid place-items-center px-4 py-8">
             <div class="mb-6 text-center">
-                <a href="/" class="inline-flex items-center gap-3">
-                    <span class="grid h-14 w-14 place-items-center rounded-2xl bg-white text-lg font-bold text-sage shadow-card">SO</span>
-                    <span class="text-left">
-                        <span class="block text-lg font-bold text-ink">Studio Osteopatico</span>
-                        <span class="block text-[10px] font-bold uppercase tracking-[.18em] text-muted">Gestionale sanitario</span>
+                <a href="/" class="inline-flex flex-col items-center gap-3">
+                    <img src="{{ asset('images/logo-filipponi.png') }}" alt="Studio Osteopatico Dott. Filipponi Danilo" class="h-16 w-auto object-contain">
+                    <span class="text-center">
+                        <span class="block text-xl font-bold text-ink">Studio Osteopatico Dott. Filipponi Danilo</span>
+                        <span class="block text-[10px] font-bold uppercase tracking-[.18em] text-muted">Riabilitazione - Osteopatia</span>
                     </span>
                 </a>
             </div>

@@ -5,7 +5,7 @@
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">Impostazioni</h2>
                 <p class="mt-1 text-sm text-gray-500">Configurazione di base dello studio e area amministrativa.</p>
             </div>
-            <a href="{{ route('profile.edit') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Gestione account</a>
+            <a href="{{ route('profile.edit') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Profilo account</a>
         </div>
     </x-slot>
 
@@ -17,6 +17,66 @@
 
             <div class="grid gap-6 lg:grid-cols-[1fr_340px]">
                 <div class="space-y-6">
+                    @if ($section === 'patients')
+                    <section class="app-card p-6">
+                        <div class="flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Impostazioni pazienti</h3>
+                                <p class="mt-1 text-sm text-gray-500">Esportazione anagrafiche pazienti in formato Excel.</p>
+                            </div>
+                            <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Export</span>
+                        </div>
+
+                        <form method="GET" action="{{ route('settings.patients') }}" class="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                            <div>
+                                <x-input-label for="patient_export_from" value="Data inizio" />
+                                <x-text-input id="patient_export_from" name="patient_export_from" type="date" class="mt-1 block w-full" :value="$patientExportFrom" />
+                            </div>
+                            <div>
+                                <x-input-label for="patient_export_to" value="Data fine" />
+                                <x-text-input id="patient_export_to" name="patient_export_to" type="date" class="mt-1 block w-full" :value="$patientExportTo" />
+                            </div>
+                            <button class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Applica filtro</button>
+                        </form>
+
+                        <div class="mt-4 flex flex-wrap gap-3">
+                            @foreach ($patientExportQuickLinks as $quickLink)
+                                <a href="{{ $quickLink['url'] }}" class="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-muted hover:bg-mist hover:text-ink">{{ $quickLink['label'] }}</a>
+                            @endforeach
+                        </div>
+
+                        <div class="mt-5 rounded-2xl border border-line bg-mist p-5">
+                            <p class="text-sm font-bold text-muted">Pazienti che saranno esportati</p>
+                            <p class="mt-1 text-3xl font-bold text-ink">{{ $patientExportCount }}</p>
+                        </div>
+
+                        <div class="mt-5 flex justify-end">
+                            <a href="{{ route('patients.export', ['from' => $patientExportFrom, 'to' => $patientExportTo]) }}" class="inline-flex items-center rounded-xl bg-sage px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75]">
+                                Esporta Excel pazienti
+                            </a>
+                        </div>
+                    </section>
+
+                    <section class="app-card p-6">
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Importazione Excel pazienti</h3>
+                            <p class="mt-1 text-sm text-gray-500">Carica un file Excel creato con l'esportazione pazienti per creare o aggiornare le anagrafiche.</p>
+                        </div>
+
+                        <form method="POST" action="{{ route('patients.import') }}" enctype="multipart/form-data" class="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                            @csrf
+                            <div>
+                                <x-input-label for="patients_file" value="File Excel pazienti" />
+                                <input id="patients_file" name="patients_file" type="file" accept=".xlsx" class="app-field mt-1 block w-full" required>
+                                <x-input-error :messages="$errors->get('patients_file')" class="mt-2" />
+                                <p class="mt-2 text-xs text-muted">Formato richiesto: foglio ImportAnagrafiche generato dall'export pazienti.</p>
+                            </div>
+                            <x-primary-button>Importa Excel pazienti</x-primary-button>
+                        </form>
+                    </section>
+                    @endif
+
+                    @if ($section === 'studio')
                     <form method="POST" action="{{ route('settings.update') }}" class="space-y-6">
                         @csrf
                         @method('PATCH')
@@ -52,7 +112,266 @@
                             <x-primary-button>Salva impostazioni</x-primary-button>
                         </div>
                     </form>
+                    @endif
 
+                    @if ($section === 'invoices')
+                    <form method="POST" action="{{ route('settings.invoices.update') }}" class="space-y-6">
+                        @csrf
+                        @method('PATCH')
+
+                        <section class="app-card p-6">
+                            <div class="flex flex-wrap items-start justify-between gap-4">
+                                <div>
+                                    <h3 class="font-semibold text-gray-900">Impostazioni default fatture</h3>
+                                    <p class="mt-1 text-sm text-gray-500">Parametri base predisposti per il modello Aruba fatture elettroniche.</p>
+                                </div>
+                                <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Aruba</span>
+                            </div>
+
+                            <div class="mt-5 space-y-6">
+                                <div>
+                                    <h4 class="text-sm font-bold uppercase text-muted">Tracciato e documento</h4>
+                                    <div class="mt-3 grid gap-4 md:grid-cols-4">
+                                        <div>
+                                            <x-input-label for="invoice_transmission_format" value="Formato trasmissione" />
+                                            <x-text-input id="invoice_transmission_format" name="invoice_transmission_format" class="mt-1 block w-full" :value="old('invoice_transmission_format', $invoiceSettings['invoice_transmission_format'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_document_type" value="Tipo documento" />
+                                            <x-text-input id="invoice_document_type" name="invoice_document_type" class="mt-1 block w-full" :value="old('invoice_document_type', $invoiceSettings['invoice_document_type'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_currency" value="Divisa" />
+                                            <x-text-input id="invoice_currency" name="invoice_currency" class="mt-1 block w-full" :value="old('invoice_currency', $invoiceSettings['invoice_currency'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_default_recipient_code" value="Codice destinatario default" />
+                                            <x-text-input id="invoice_default_recipient_code" name="invoice_default_recipient_code" class="mt-1 block w-full" :value="old('invoice_default_recipient_code', $invoiceSettings['invoice_default_recipient_code'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_transmitter_country_id" value="Id paese trasmittente" />
+                                            <x-text-input id="invoice_transmitter_country_id" name="invoice_transmitter_country_id" class="mt-1 block w-full" :value="old('invoice_transmitter_country_id', $invoiceSettings['invoice_transmitter_country_id'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_transmitter_vat_number" value="Id codice trasmittente" />
+                                            <x-text-input id="invoice_transmitter_vat_number" name="invoice_transmitter_vat_number" class="mt-1 block w-full" :value="old('invoice_transmitter_vat_number', $invoiceSettings['invoice_transmitter_vat_number'])" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-sm font-bold uppercase text-muted">Cedente / prestatore</h4>
+                                    <div class="mt-3 grid gap-4 md:grid-cols-3">
+                                        <div>
+                                            <x-input-label for="invoice_sender_name" value="Denominazione" />
+                                            <x-text-input id="invoice_sender_name" name="invoice_sender_name" class="mt-1 block w-full" :value="old('invoice_sender_name', $invoiceSettings['invoice_sender_name'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_sender_vat_number" value="Partita IVA" />
+                                            <x-text-input id="invoice_sender_vat_number" name="invoice_sender_vat_number" class="mt-1 block w-full" :value="old('invoice_sender_vat_number', $invoiceSettings['invoice_sender_vat_number'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_sender_tax_code" value="Codice fiscale" />
+                                            <x-text-input id="invoice_sender_tax_code" name="invoice_sender_tax_code" class="mt-1 block w-full" :value="old('invoice_sender_tax_code', $invoiceSettings['invoice_sender_tax_code'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_sender_vat_country" value="Id paese IVA" />
+                                            <x-text-input id="invoice_sender_vat_country" name="invoice_sender_vat_country" class="mt-1 block w-full" :value="old('invoice_sender_vat_country', $invoiceSettings['invoice_sender_vat_country'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_tax_regime" value="Regime fiscale" />
+                                            <x-text-input id="invoice_tax_regime" name="invoice_tax_regime" class="mt-1 block w-full" :value="old('invoice_tax_regime', $invoiceSettings['invoice_tax_regime'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_sender_email" value="Email" />
+                                            <x-text-input id="invoice_sender_email" name="invoice_sender_email" type="email" class="mt-1 block w-full" :value="old('invoice_sender_email', $invoiceSettings['invoice_sender_email'])" />
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <x-input-label for="invoice_sender_address" value="Indirizzo" />
+                                            <x-text-input id="invoice_sender_address" name="invoice_sender_address" class="mt-1 block w-full" :value="old('invoice_sender_address', $invoiceSettings['invoice_sender_address'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_sender_postal_code" value="CAP" />
+                                            <x-text-input id="invoice_sender_postal_code" name="invoice_sender_postal_code" class="mt-1 block w-full" :value="old('invoice_sender_postal_code', $invoiceSettings['invoice_sender_postal_code'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_sender_city" value="Comune" />
+                                            <x-text-input id="invoice_sender_city" name="invoice_sender_city" class="mt-1 block w-full" :value="old('invoice_sender_city', $invoiceSettings['invoice_sender_city'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_sender_province" value="Provincia" />
+                                            <x-text-input id="invoice_sender_province" name="invoice_sender_province" class="mt-1 block w-full" :value="old('invoice_sender_province', $invoiceSettings['invoice_sender_province'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_sender_country" value="Nazione" />
+                                            <x-text-input id="invoice_sender_country" name="invoice_sender_country" class="mt-1 block w-full" :value="old('invoice_sender_country', $invoiceSettings['invoice_sender_country'])" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="text-sm font-bold uppercase text-muted">IVA, cassa e pagamento</h4>
+                                    <div class="mt-3 grid gap-4 md:grid-cols-3">
+                                        <div>
+                                            <x-input-label for="invoice_vat_nature" value="Natura IVA" />
+                                            <x-text-input id="invoice_vat_nature" name="invoice_vat_nature" class="mt-1 block w-full" :value="old('invoice_vat_nature', $invoiceSettings['invoice_vat_nature'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_vat_reference" value="Riferimento normativo IVA" />
+                                            <x-text-input id="invoice_vat_reference" name="invoice_vat_reference" class="mt-1 block w-full" :value="old('invoice_vat_reference', $invoiceSettings['invoice_vat_reference'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_social_security_type" value="Tipo cassa" />
+                                            <x-text-input id="invoice_social_security_type" name="invoice_social_security_type" class="mt-1 block w-full" :value="old('invoice_social_security_type', $invoiceSettings['invoice_social_security_type'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_social_security_rate" value="Aliquota cassa" />
+                                            <x-text-input id="invoice_social_security_rate" name="invoice_social_security_rate" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('invoice_social_security_rate', $invoiceSettings['invoice_social_security_rate'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_payment_method" value="Metodo pagamento" />
+                                            <x-text-input id="invoice_payment_method" name="invoice_payment_method" class="mt-1 block w-full" :value="old('invoice_payment_method', $invoiceSettings['invoice_payment_method'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_payment_terms" value="Condizioni pagamento" />
+                                            <x-text-input id="invoice_payment_terms" name="invoice_payment_terms" class="mt-1 block w-full" :value="old('invoice_payment_terms', $invoiceSettings['invoice_payment_terms'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_stamp_threshold" value="Soglia bollo" />
+                                            <x-text-input id="invoice_stamp_threshold" name="invoice_stamp_threshold" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('invoice_stamp_threshold', $invoiceSettings['invoice_stamp_threshold'])" />
+                                        </div>
+                                        <div>
+                                            <x-input-label for="invoice_stamp_amount" value="Importo bollo" />
+                                            <x-text-input id="invoice_stamp_amount" name="invoice_stamp_amount" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('invoice_stamp_amount', $invoiceSettings['invoice_stamp_amount'])" />
+                                        </div>
+                                        <div class="md:col-span-3">
+                                            <x-input-label for="invoice_default_causale" value="Causale default" />
+                                            <textarea id="invoice_default_causale" name="invoice_default_causale" rows="3" class="app-field mt-1 block w-full">{{ old('invoice_default_causale', $invoiceSettings['invoice_default_causale']) }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-8">
+                                <h4 class="text-sm font-bold uppercase text-muted">Servizi selezionabili in fattura</h4>
+                                <div class="mt-4 overflow-x-auto">
+                                    <table class="w-full min-w-[980px] text-left text-sm">
+                                        <thead>
+                                            <tr class="border-b border-line text-xs uppercase text-muted">
+                                                <th class="pb-3">Servizio</th>
+                                                <th class="pb-3">Descrizione</th>
+                                                <th class="pb-3">Costo</th>
+                                                <th class="pb-3">Aliquota</th>
+                                                <th class="pb-3">Cassa</th>
+                                                <th class="pb-3">Natura</th>
+                                                <th class="pb-3">IVA</th>
+                                                <th class="pb-3">Bollo</th>
+                                                <th class="pb-3">Totale</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-line">
+                                            @for ($index = 0; $index < 5; $index++)
+                                                @php
+                                                    $service = old("services.$index", $invoiceServices[$index] ?? []);
+                                                    $amount = (float) ($service['amount'] ?? 0);
+                                                    $vatRate = (float) ($service['vat_rate'] ?? 0);
+                                                    $socialSecurityRate = (float) ($service['social_security_rate'] ?? $invoiceSettings['invoice_social_security_rate']);
+                                                    $stampDuty = (bool) ($service['stamp_duty'] ?? false);
+                                                    $socialSecurityAmount = $amount * $socialSecurityRate / 100;
+                                                    $taxable = $amount + $socialSecurityAmount;
+                                                    $vat = $taxable * $vatRate / 100;
+                                                    $stampAmount = $stampDuty && $taxable > (float) $invoiceSettings['invoice_stamp_threshold'] ? (float) $invoiceSettings['invoice_stamp_amount'] : 0;
+                                                @endphp
+                                                <tr>
+                                                    <td class="py-3 pr-3"><input name="services[{{ $index }}][name]" class="app-field w-44" value="{{ $service['name'] ?? '' }}"></td>
+                                                    <td class="py-3 pr-3"><input name="services[{{ $index }}][description]" class="app-field w-56" value="{{ $service['description'] ?? '' }}"></td>
+                                                    <td class="py-3 pr-3"><input name="services[{{ $index }}][amount]" type="number" step="0.01" min="0" class="app-field w-28" value="{{ $service['amount'] ?? '' }}"></td>
+                                                    <td class="py-3 pr-3"><input name="services[{{ $index }}][vat_rate]" type="number" step="0.01" min="0" max="100" class="app-field w-24" value="{{ $service['vat_rate'] ?? '0' }}"></td>
+                                                    <td class="py-3 pr-3"><input name="services[{{ $index }}][social_security_rate]" type="number" step="0.01" min="0" max="100" class="app-field w-24" value="{{ $service['social_security_rate'] ?? $invoiceSettings['invoice_social_security_rate'] }}"></td>
+                                                    <td class="py-3 pr-3"><input name="services[{{ $index }}][vat_nature]" class="app-field w-24" value="{{ $service['vat_nature'] ?? $invoiceSettings['invoice_vat_nature'] }}"></td>
+                                                    <input type="hidden" name="services[{{ $index }}][unit_measure]" value="{{ $service['unit_measure'] ?? 'PZ' }}">
+                                                    <td class="py-3 pr-3 font-medium text-ink">EUR {{ number_format($vat, 2, ',', '.') }}</td>
+                                                    <td class="py-3 pr-3">
+                                                        <label class="flex items-center gap-2 text-sm text-muted">
+                                                            <input type="checkbox" name="services[{{ $index }}][stamp_duty]" value="1" @checked($stampDuty) class="rounded border-gray-300 text-sage focus:ring-sage">
+                                                            EUR {{ number_format($stampAmount, 2, ',', '.') }}
+                                                        </label>
+                                                    </td>
+                                                    <td class="py-3 pr-3 font-bold text-ink">EUR {{ number_format($taxable + $vat + $stampAmount, 2, ',', '.') }}</td>
+                                                </tr>
+                                            @endfor
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 flex justify-end">
+                                <x-primary-button>Salva impostazioni fatture</x-primary-button>
+                            </div>
+                        </section>
+                    </form>
+
+                    <section class="app-card p-6">
+                        <div class="flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Esportazione XML fatture</h3>
+                                <p class="mt-1 text-sm text-gray-500">Genera uno ZIP con XML fattura elettronica sulla base del modello Aruba configurato.</p>
+                            </div>
+                            <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">XML</span>
+                        </div>
+
+                        <form method="GET" action="{{ route('settings.invoices') }}" class="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                            <div>
+                                <x-input-label for="invoice_export_from" value="Data inizio" />
+                                <x-text-input id="invoice_export_from" name="invoice_export_from" type="date" class="mt-1 block w-full" :value="$invoiceExportFrom" />
+                            </div>
+                            <div>
+                                <x-input-label for="invoice_export_to" value="Data fine" />
+                                <x-text-input id="invoice_export_to" name="invoice_export_to" type="date" class="mt-1 block w-full" :value="$invoiceExportTo" />
+                            </div>
+                            <button class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Applica filtro</button>
+                        </form>
+
+                        <div class="mt-4 flex flex-wrap gap-3">
+                            @foreach ($invoiceExportQuickLinks as $quickLink)
+                                <a href="{{ $quickLink['url'] }}" class="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-muted hover:bg-mist hover:text-ink">{{ $quickLink['label'] }}</a>
+                            @endforeach
+                        </div>
+
+                        <div class="mt-5 rounded-2xl border border-line bg-mist p-5">
+                            <p class="text-sm font-bold text-muted">Fatture che saranno esportate</p>
+                            <p class="mt-1 text-3xl font-bold text-ink">{{ $invoiceExportCount }}</p>
+                        </div>
+
+                        <div class="mt-5 flex justify-end">
+                            <a href="{{ route('settings.invoices.export-xml', ['from' => $invoiceExportFrom, 'to' => $invoiceExportTo]) }}" class="inline-flex items-center rounded-xl bg-sage px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75]">
+                                Esporta fatture XML
+                            </a>
+                        </div>
+                    </section>
+
+                    <section class="app-card p-6">
+                        <h3 class="font-semibold text-gray-900">Importazione Excel fatture</h3>
+                        <p class="mt-1 text-sm text-gray-500">Importa lo storico fatture collegandolo al paziente tramite la colonna Idpaziente.</p>
+
+                        <form method="POST" action="{{ route('settings.invoices.import') }}" enctype="multipart/form-data" class="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                            @csrf
+                            <div>
+                                <x-input-label for="invoices_file" value="File Excel fatture" />
+                                <input id="invoices_file" name="invoices_file" type="file" accept=".xlsx" class="app-field mt-1 block w-full" required>
+                                <x-input-error :messages="$errors->get('invoices_file')" class="mt-2" />
+                                <p class="mt-2 text-xs text-muted">Colonne lette: IDFattura, N Fattura, Data di emissione, Idpaziente, Descrizione, Importo, Inps, Bollo, Totale.</p>
+                            </div>
+                            <x-primary-button>Importa Excel fatture</x-primary-button>
+                        </form>
+
+                        <div class="mt-5 rounded-2xl border border-line bg-mist p-5 text-sm text-muted">
+                            Se una fattura con lo stesso numero esiste gia nella scheda del paziente, viene aggiornata. Le righe con Idpaziente non trovato vengono saltate e conteggiate nel report finale.
+                        </div>
+                    </section>
+                    @endif
+
+                    @if ($section === 'users')
                     <section class="app-card p-6">
                         <h3 class="font-semibold text-gray-900">Nuovo utente</h3>
                         <form method="POST" action="{{ route('settings.users.store') }}" class="mt-4 grid gap-4 md:grid-cols-2">
@@ -124,14 +443,77 @@
                             @endforeach
                         </div>
                     </section>
+                    @endif
+
+                    @if ($section === 'sessions')
+                    <form method="POST" action="{{ route('settings.sessions.update') }}" class="space-y-6">
+                        @csrf
+                        @method('PATCH')
+
+                        <section class="app-card p-6">
+                            <div class="flex flex-wrap items-start justify-between gap-4">
+                                <div>
+                                    <h3 class="font-semibold text-gray-900">Impostazioni sedute</h3>
+                                    <p class="mt-1 text-sm text-gray-500">Tariffario selezionabile nella cartella paziente durante la registrazione delle sedute.</p>
+                                </div>
+                                <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Tariffe</span>
+                            </div>
+
+                            <div class="mt-5 overflow-x-auto">
+                                <table class="w-full min-w-[760px] text-left text-sm">
+                                    <thead>
+                                        <tr class="border-b border-line text-xs uppercase text-muted">
+                                            <th class="pb-3">Attiva</th>
+                                            <th class="pb-3">Default</th>
+                                            <th class="pb-3">Prestazione</th>
+                                            <th class="pb-3">Tariffa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-line">
+                                        @for ($index = 0; $index < 8; $index++)
+                                            @php
+                                                $rate = old("rates.$index", $sessionRates[$index] ?? []);
+                                            @endphp
+                                            <tr>
+                                                <td class="py-3 pr-3">
+                                                    <input type="checkbox" name="rates[{{ $index }}][active]" value="1" @checked((bool) ($rate['active'] ?? false)) class="rounded border-gray-300 text-sage focus:ring-sage">
+                                                </td>
+                                                <td class="py-3 pr-3">
+                                                    <input type="checkbox" name="rates[{{ $index }}][default]" value="1" @checked((bool) ($rate['default'] ?? false)) class="rounded border-gray-300 text-sage focus:ring-sage">
+                                                </td>
+                                                <td class="py-3 pr-3">
+                                                    <input name="rates[{{ $index }}][name]" class="app-field w-full min-w-80" value="{{ $rate['name'] ?? '' }}" placeholder="Es. Seduta di manipolazione osteopatica">
+                                                </td>
+                                                <td class="py-3 pr-3">
+                                                    <input name="rates[{{ $index }}][amount]" type="number" step="0.01" min="0" class="app-field w-32" value="{{ $rate['amount'] ?? '' }}" placeholder="40.00">
+                                                </td>
+                                            </tr>
+                                        @endfor
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="mt-5 rounded-2xl border border-line bg-mist p-5 text-sm text-muted">
+                                Le tariffe attive compaiono nella tendina della pagina sedute. Se non scegli una tariffa default, verra usata la prima tariffa attiva.
+                            </div>
+
+                            <div class="mt-5 flex justify-end">
+                                <x-primary-button>Salva impostazioni sedute</x-primary-button>
+                            </div>
+                        </section>
+                    </form>
+                    @endif
                 </div>
 
                 <aside class="space-y-6">
                     <section class="app-card p-6">
                         <h3 class="font-semibold text-gray-900">Area amministrativa</h3>
                         <div class="mt-4 space-y-3">
-                            <a href="{{ route('profile.edit') }}" class="block rounded-md border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Il mio account</a>
-                            <div class="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-900">Utenti e password</div>
+                            <a href="{{ route('settings.edit') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'studio' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Dati studio</a>
+                            <a href="{{ route('settings.patients') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'patients' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni pazienti</a>
+                            <a href="{{ route('settings.sessions') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'sessions' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni sedute</a>
+                            <a href="{{ route('settings.invoices') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'invoices' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni fatture</a>
+                            <a href="{{ route('settings.users') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'users' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Utenti e password</a>
                             <div class="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-500">Numerazione documenti</div>
                             <div class="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-500">Consensi e privacy</div>
                             <div class="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-500">Backup ed esportazioni</div>
