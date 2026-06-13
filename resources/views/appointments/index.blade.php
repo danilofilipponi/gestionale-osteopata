@@ -21,8 +21,8 @@
         $defaultEnd = $date->copy()->setTimeFromTimeString($settings['agenda_start_time'])->addMinutes((int) $settings['agenda_default_duration'])->format('Y-m-d\TH:i');
         $categoryMap = collect($categories)->keyBy('key');
         $calendarDayChunks = $calendarDays->chunk(7);
-        $slotMinutes = max(15, (int) $settings['agenda_slot_minutes']);
-        $slotHeight = 38;
+        $slotMinutes = 15;
+        $slotHeight = 26;
         $agendaStartMinutes = (int) now()->setTimeFromTimeString($settings['agenda_start_time'])->diffInMinutes(now()->setTimeFromTimeString($settings['agenda_end_time']));
         $agendaBodyHeight = max(count($timeSlots) * $slotHeight, $slotHeight);
     @endphp
@@ -49,6 +49,12 @@
         <div class="app-section space-y-6">
             @if (session('status'))
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
+            @endif
+
+            @if ($errors->any())
+                <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+                    {{ $errors->first() }}
+                </div>
             @endif
 
             <section class="app-card bg-[#eef6f4] p-5">
@@ -135,15 +141,15 @@
                                 </div>
                                 <div class="mt-2 space-y-1">
                                     @foreach ($dayEvents->take(4) as $appointment)
-                                        <details class="group rounded-lg border border-line bg-white p-2 text-xs shadow-sm">
-                                            <summary class="cursor-pointer list-none">
-                                                <span class="block truncate font-bold text-ink">
-                                                    <span class="mr-1 inline-block h-2 w-2 rounded-full" style="background-color: {{ $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a') }}"></span>
-                                                    {{ $appointment->starts_at->format('H:i') }} {{ $appointment->title }}
-                                                </span>
-                                            </summary>
-                                            @include('appointments.partials.edit-form', ['appointment' => $appointment])
-                                        </details>
+                                        @php
+                                            $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                                        @endphp
+                                        <button type="button" data-appointment-modal="appointment-modal-{{ $appointment->id }}" class="block w-full rounded-lg border border-line bg-white p-2 text-left text-xs shadow-sm transition hover:bg-mist" style="border-left: 5px solid {{ $appointmentColor }};">
+                                            <span class="block truncate font-bold text-ink">
+                                                <span class="mr-1 inline-block h-2 w-2 rounded-full" style="background-color: {{ $appointmentColor }}"></span>
+                                                {{ $appointment->starts_at->format('H:i') }} {{ $appointment->title }}
+                                            </span>
+                                        </button>
                                     @endforeach
                                     @if ($dayEvents->count() > 4)
                                         <p class="text-xs font-bold text-muted">+ {{ $dayEvents->count() - 4 }} altri</p>
@@ -166,9 +172,9 @@
                             </div>
 
                             <div class="grid bg-white" style="grid-template-columns: 82px repeat({{ $calendarDays->count() }}, minmax(180px, 1fr));">
-                                <div class="border-r border-line">
+                                <div class="border-r border-line bg-white">
                                     @foreach ($timeSlots as $slot)
-                                        <div class="border-b border-line px-3 pt-2 text-xs font-bold text-muted" style="height: {{ $slotHeight }}px;">{{ $slot }}</div>
+                                        <div class="border-b border-[#d1dfdb] px-2 pt-1.5 text-[11px] font-bold leading-none text-muted" style="height: {{ $slotHeight }}px;">{{ $slot }}</div>
                                     @endforeach
                                 </div>
 
@@ -179,9 +185,7 @@
                                         $dayEvents = $appointmentsByDate->get($day->toDateString(), collect());
                                     @endphp
                                     <div class="relative border-r border-line last:border-r-0 {{ $day->isSameDay($today) ? 'bg-[#f4faf8]' : 'bg-white' }}" style="height: {{ $agendaBodyHeight }}px;">
-                                        @foreach ($timeSlots as $slot)
-                                            <div class="border-b border-line/80" style="height: {{ $slotHeight }}px;"></div>
-                                        @endforeach
+                                        <div class="pointer-events-none absolute inset-0 z-0" style="background-image: repeating-linear-gradient(to bottom, transparent 0, transparent {{ $slotHeight - 1 }}px, #b8cbc6 {{ $slotHeight - 1 }}px, #b8cbc6 {{ $slotHeight }}px);"></div>
 
                                         @foreach ($dayEvents as $appointment)
                                             @php
@@ -190,24 +194,21 @@
                                                 $minutesFromStart = max(0, $dayStart->diffInMinutes($visibleStart, false));
                                                 $durationMinutes = max(15, $visibleStart->diffInMinutes($visibleEnd, false));
                                                 $eventTop = ($minutesFromStart / $slotMinutes) * $slotHeight;
-                                                $eventHeight = max(30, (($durationMinutes / $slotMinutes) * $slotHeight) - 6);
+                                                $eventHeight = max(24, ($durationMinutes / $slotMinutes) * $slotHeight);
                                             @endphp
-                                            <details class="absolute left-2 right-2 z-10 overflow-visible rounded-xl border border-line bg-white p-2 shadow-sm" style="top: {{ $eventTop + 3 }}px; min-height: {{ $eventHeight }}px;">
-                                                <summary class="cursor-pointer list-none">
-                                                    <div class="flex items-start gap-2">
-                                                        <span class="mt-1 h-3 w-3 shrink-0 rounded-full" style="background-color: {{ $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a') }}"></span>
-                                                        <div class="min-w-0">
-                                                            <p class="truncate text-sm font-bold text-ink">{{ $appointment->title }}</p>
-                                                            <p class="mt-0.5 text-xs text-muted">{{ $appointment->starts_at->format('H:i') }} - {{ $appointment->ends_at->format('H:i') }}</p>
-                                                            <p class="truncate text-xs text-muted">{{ $appointment->patient?->list_name ?: ($categoryMap->get($appointment->type)['label'] ?? 'Impegno personale') }}</p>
-                                                            @if ($eventHeight > 54)
-                                                                <span class="mt-1 inline-flex rounded-full bg-mist px-2 py-0.5 text-[11px] font-bold text-sage">{{ $statusLabels[$appointment->status] ?? $appointment->status }}</span>
-                                                            @endif
-                                                        </div>
+                                            @php
+                                                $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                                            @endphp
+                                            <button type="button" data-appointment-modal="appointment-modal-{{ $appointment->id }}" class="absolute left-0 right-0 z-10 box-border overflow-hidden rounded-xl border border-line bg-white p-2 text-left shadow-sm transition hover:bg-mist" style="top: {{ $eventTop + 2 }}px; width: 100%; min-height: {{ $eventHeight }}px; border-left: 5px solid {{ $appointmentColor }};">
+                                                <div class="flex items-start gap-2">
+                                                    <span class="mt-1 h-3 w-3 shrink-0 rounded-full" style="background-color: {{ $appointmentColor }}"></span>
+                                                    <div class="min-w-0">
+                                                        <p class="truncate text-sm font-bold text-ink">{{ $appointment->title }}</p>
+                                                        <p class="mt-0.5 text-xs text-muted">{{ $appointment->starts_at->format('H:i') }} - {{ $appointment->ends_at->format('H:i') }}</p>
+                                                        <p class="truncate text-xs text-muted">{{ $appointment->patient?->list_name ?: ($categoryMap->get($appointment->type)['label'] ?? 'Impegno personale') }}</p>
                                                     </div>
-                                                </summary>
-                                                @include('appointments.partials.edit-form', ['appointment' => $appointment])
-                                            </details>
+                                                </div>
+                                            </button>
                                         @endforeach
                                     </div>
                                 @endforeach
@@ -218,4 +219,64 @@
             </section>
         </div>
     </div>
+
+    @push('modals')
+        @foreach ($appointments as $appointment)
+            @php
+                $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+            @endphp
+            @include('appointments.partials.modal', ['appointment' => $appointment, 'appointmentColor' => $appointmentColor])
+        @endforeach
+    @endpush
+
+    @push('scripts')
+        <script>
+            document.addEventListener('click', (event) => {
+                const opener = event.target.closest('[data-appointment-modal]');
+                const closer = event.target.closest('[data-close-appointment-modal]');
+
+                if (opener) {
+                    const modal = document.getElementById(opener.dataset.appointmentModal);
+                    if (modal) {
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
+                        modal.setAttribute('aria-hidden', 'false');
+                        document.body.classList.add('overflow-hidden');
+                    }
+                    return;
+                }
+
+                if (closer) {
+                    const modal = closer.closest('[id^="appointment-modal-"]');
+                    if (modal) {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                        modal.setAttribute('aria-hidden', 'true');
+                        document.body.classList.remove('overflow-hidden');
+                    }
+                    return;
+                }
+
+                if (event.target.matches('[id^="appointment-modal-"]')) {
+                    event.target.classList.add('hidden');
+                    event.target.classList.remove('flex');
+                    event.target.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('overflow-hidden');
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key !== 'Escape') {
+                    return;
+                }
+
+                document.querySelectorAll('[id^="appointment-modal-"].flex').forEach((modal) => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('overflow-hidden');
+                });
+            });
+        </script>
+    @endpush
 </x-app-layout>

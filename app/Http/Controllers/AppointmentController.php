@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Support\GoogleCalendarClient;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class AppointmentController extends Controller
@@ -44,7 +45,7 @@ class AppointmentController extends Controller
             'calendarStart' => $calendarStart,
             'calendarEnd' => $calendarEnd,
             'calendarDays' => collect(CarbonPeriod::create($calendarStart, $calendarEnd)),
-            'timeSlots' => $this->timeSlots($settings['agenda_start_time'], $settings['agenda_end_time'], (int) $settings['agenda_slot_minutes']),
+            'timeSlots' => $this->timeSlots($settings['agenda_start_time'], $settings['agenda_end_time'], 15),
             'settings' => $settings,
             'categories' => $categories,
             'appointmentsByDate' => $appointments->groupBy(fn (Appointment $appointment) => $appointment->starts_at->toDateString()),
@@ -105,9 +106,19 @@ class AppointmentController extends Controller
             ->where('status', '!=', 'cancelled')
             ->where('starts_at', '<', $endsAt)
             ->where('ends_at', '>', $startsAt)
-            ->exists();
+            ->oldest('starts_at')
+            ->first();
 
-        abort_if($overlap, 422, 'Esiste gia un appuntamento nello stesso orario.');
+        if ($overlap) {
+            throw ValidationException::withMessages([
+                'starts_at' => sprintf(
+                    'Esiste gia un appuntamento nello stesso orario: %s, dalle %s alle %s.',
+                    $overlap->title,
+                    $overlap->starts_at->format('H:i'),
+                    $overlap->ends_at->format('H:i')
+                ),
+            ]);
+        }
     }
 
     private function settings(): array

@@ -70,6 +70,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/google/calendar/callback', [GoogleCalendarController::class, 'callback'])->name('google.calendar.callback');
     Route::post('/google/calendar/disconnect', [GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect');
     Route::post('/google/calendar/sync', [GoogleCalendarController::class, 'sync'])->name('google.calendar.sync');
+    Route::post('/google/calendar/auto-sync', [GoogleCalendarController::class, 'autoSync'])->name('google.calendar.auto-sync');
     Route::post('/google/calendar/calendars', [GoogleCalendarController::class, 'refreshCalendars'])->name('google.calendar.calendars');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
