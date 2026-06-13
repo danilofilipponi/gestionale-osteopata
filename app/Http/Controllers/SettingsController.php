@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Support\InvoiceExcelImporter;
 use App\Support\InvoiceXmlExporter;
+use App\Support\GoogleCalendarClient;
 use App\Support\TreatmentSessionDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,6 +39,59 @@ class SettingsController extends Controller
     public function sessions(Request $request)
     {
         return $this->settingsView($request, 'sessions');
+    }
+
+    public function agenda(Request $request)
+    {
+        return $this->settingsView($request, 'agenda');
+    }
+
+    public function updateAgenda(Request $request)
+    {
+        $validated = $request->validate([
+            'agenda_start_time' => ['required', 'date_format:H:i'],
+            'agenda_end_time' => ['required', 'date_format:H:i', 'after:agenda_start_time'],
+            'agenda_slot_minutes' => ['required', 'integer', 'min:15', 'max:120'],
+            'agenda_default_duration' => ['required', 'integer', 'min:15', 'max:240'],
+            'google_calendar_enabled' => ['nullable', 'boolean'],
+            'google_calendar_id' => ['nullable', 'string', 'max:255'],
+            'google_calendar_client_id' => ['nullable', 'string', 'max:255'],
+            'google_calendar_api_key' => ['nullable', 'string', 'max:255'],
+            'google_calendar_sync_mode' => ['nullable', Rule::in(['read', 'write', 'two_way'])],
+            'google_calendar_selected_ids' => ['nullable', 'array'],
+            'google_calendar_selected_ids.*' => ['string', 'max:255'],
+            'categories' => ['nullable', 'array'],
+            'categories.*.key' => ['nullable', 'string', 'max:50'],
+            'categories.*.label' => ['nullable', 'string', 'max:255'],
+            'categories.*.color' => ['nullable', 'string', 'max:20'],
+            'categories.*.google_calendar_id' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        foreach ($this->agendaSettingDefinitions() as $key => $definition) {
+            $value = $key === 'google_calendar_enabled'
+                ? (string) (int) $request->boolean($key)
+                : (string) ($validated[$key] ?? $definition['default']);
+
+            Setting::setValue($key, $value, 'agenda');
+        }
+
+        $categories = collect($validated['categories'] ?? [])
+            ->filter(fn (array $category) => filled($category['label'] ?? null))
+            ->map(fn (array $category, int $index) => [
+                'key' => $category['key'] ?: 'custom_'.$index,
+                'label' => $category['label'] ?? '',
+                'color' => $category['color'] ?: '#5f948a',
+                'google_calendar_id' => $category['google_calendar_id'] ?? '',
+            ])
+            ->values()
+            ->all();
+
+        Setting::setValue('agenda_categories', json_encode($categories), 'agenda');
+        Setting::setValue('google_calendar_selected_ids', json_encode(array_values($validated['google_calendar_selected_ids'] ?? [])), 'agenda');
+
+        return redirect()
+            ->route('settings.agenda')
+            ->with('status', 'Impostazioni agenda aggiornate.');
     }
 
     public function updateSessions(Request $request)
@@ -198,6 +252,11 @@ class SettingsController extends Controller
             'invoiceSettings' => $this->invoiceValues(),
             'invoiceServices' => $this->invoiceServices(),
             'sessionRates' => TreatmentSessionDefaults::rates(),
+            'agendaSettings' => $this->agendaValues(),
+            'agendaCategories' => $this->agendaCategories(),
+            'googleCalendarStatus' => GoogleCalendarClient::status(),
+            'googleCalendars' => GoogleCalendarClient::storedCalendarList(),
+            'selectedGoogleCalendarIds' => GoogleCalendarClient::selectedCalendarIds(),
             'patientExportFrom' => $patientExportFrom,
             'patientExportTo' => $patientExportTo,
             'patientExportCount' => $this->patientExportQuery($patientExportFrom, $patientExportTo)->count(),
@@ -459,6 +518,46 @@ class SettingsController extends Controller
                 'unit_measure' => 'PZ',
                 'stamp_duty' => true,
             ],
+        ];
+    }
+
+    private function agendaSettingDefinitions(): array
+    {
+        return [
+            'agenda_start_time' => ['default' => '08:00'],
+            'agenda_end_time' => ['default' => '20:00'],
+            'agenda_slot_minutes' => ['default' => '30'],
+            'agenda_default_duration' => ['default' => '60'],
+            'google_calendar_enabled' => ['default' => '0'],
+            'google_calendar_id' => ['default' => config('services.google_calendar.calendar_id', 'primary')],
+            'google_calendar_client_id' => ['default' => config('services.google_calendar.client_id', '')],
+            'google_calendar_api_key' => ['default' => ''],
+            'google_calendar_sync_mode' => ['default' => 'read'],
+        ];
+    }
+
+    private function agendaValues(): array
+    {
+        return collect($this->agendaSettingDefinitions())
+            ->mapWithKeys(fn (array $definition, string $key) => [
+                $key => Setting::getValue($key, $definition['default']),
+            ])
+            ->all();
+    }
+
+    private function agendaCategories(): array
+    {
+        $categories = json_decode(Setting::getValue('agenda_categories', '[]'), true) ?: [];
+
+        if ($categories !== []) {
+            return $categories;
+        }
+
+        return [
+            ['key' => 'visit', 'label' => 'Visita osteopatica', 'color' => '#5f948a', 'google_calendar_id' => ''],
+            ['key' => 'personal', 'label' => 'Impegno personale', 'color' => '#64748b', 'google_calendar_id' => ''],
+            ['key' => 'holiday', 'label' => 'Ferie', 'color' => '#d97706', 'google_calendar_id' => ''],
+            ['key' => 'absence', 'label' => 'Assenza', 'color' => '#dc2626', 'google_calendar_id' => ''],
         ];
     }
 

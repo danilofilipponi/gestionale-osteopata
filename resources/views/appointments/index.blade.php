@@ -1,14 +1,46 @@
 <x-app-layout>
+    @php
+        $today = now();
+        $viewLabels = ['day' => 'Giorno', 'week' => 'Settimana', 'month' => 'Mese'];
+        $periodTitle = match ($view) {
+            'day' => $date->translatedFormat('l d F Y'),
+            'month' => $date->translatedFormat('F Y'),
+            default => $start->format('d/m/Y').' - '.$end->format('d/m/Y'),
+        };
+        $prevDate = match ($view) {
+            'day' => $date->copy()->subDay(),
+            'month' => $date->copy()->subMonth(),
+            default => $date->copy()->subWeek(),
+        };
+        $nextDate = match ($view) {
+            'day' => $date->copy()->addDay(),
+            'month' => $date->copy()->addMonth(),
+            default => $date->copy()->addWeek(),
+        };
+        $defaultStart = $date->copy()->setTimeFromTimeString($settings['agenda_start_time'])->format('Y-m-d\TH:i');
+        $defaultEnd = $date->copy()->setTimeFromTimeString($settings['agenda_start_time'])->addMinutes((int) $settings['agenda_default_duration'])->format('Y-m-d\TH:i');
+        $categoryMap = collect($categories)->keyBy('key');
+        $calendarDayChunks = $calendarDays->chunk(7);
+        $slotMinutes = max(15, (int) $settings['agenda_slot_minutes']);
+        $slotHeight = 38;
+        $agendaStartMinutes = (int) now()->setTimeFromTimeString($settings['agenda_start_time'])->diffInMinutes(now()->setTimeFromTimeString($settings['agenda_end_time']));
+        $agendaBodyHeight = max(count($timeSlots) * $slotHeight, $slotHeight);
+    @endphp
+
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Agenda</h2>
-                <p class="mt-1 text-sm text-gray-500">{{ $start->format('d/m/Y') }} - {{ $end->format('d/m/Y') }}</p>
+                <h2 class="text-xl font-semibold leading-tight text-gray-800">Agenda</h2>
+                <p class="mt-1 text-sm text-gray-500">{{ ucfirst($periodTitle) }}</p>
             </div>
-            <div class="flex gap-2">
-                @foreach (['day' => 'Giorno', 'week' => 'Settimana', 'month' => 'Mese'] as $key => $label)
-                    <a href="{{ route('appointments.index', ['view' => $key, 'date' => $date->toDateString()]) }}" class="rounded-xl px-3 py-2 text-sm font-bold {{ $view === $key ? 'bg-sage text-white' : 'border border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">{{ $label }}</a>
-                @endforeach
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('settings.agenda') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Impostazioni agenda</a>
+                <a href="{{ route('appointments.index', ['view' => $view, 'date' => now()->toDateString()]) }}" class="rounded-xl border border-line bg-white px-3 py-2 text-sm font-bold text-muted hover:bg-mist hover:text-ink">Oggi</a>
+                <div class="flex rounded-xl border border-line bg-white p-1 shadow-sm">
+                    @foreach ($viewLabels as $key => $label)
+                        <a href="{{ route('appointments.index', ['view' => $key, 'date' => $date->toDateString()]) }}" class="rounded-lg px-3 py-1.5 text-sm font-bold {{ $view === $key ? 'bg-sage text-white' : 'text-muted hover:bg-mist hover:text-ink' }}">{{ $label }}</a>
+                    @endforeach
+                </div>
             </div>
         </div>
     </x-slot>
@@ -19,98 +51,170 @@
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
             @endif
 
-            <section class="app-card p-6">
-                <h3 class="font-semibold text-gray-900">Nuovo appuntamento</h3>
-                <form method="POST" action="{{ route('appointments.store') }}" class="mt-4 grid gap-4 md:grid-cols-4">
+            <section class="app-card bg-[#eef6f4] p-5">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p class="text-xs font-bold uppercase text-muted">Nuovo appuntamento</p>
+                        <h3 class="text-lg font-semibold text-gray-900">Inserimento rapido in agenda</h3>
+                    </div>
+                    <span class="rounded-full bg-white px-3 py-1 text-xs font-bold text-sage">{{ $settings['agenda_default_duration'] }} minuti default</span>
+                </div>
+
+                <form method="POST" action="{{ route('appointments.store') }}" class="mt-4 grid gap-3 md:grid-cols-6">
                     @csrf
-                    <select name="patient_id" class="app-field">
+                    <select name="patient_id" class="app-field md:col-span-2">
                         <option value="">Impegno personale</option>
                         @foreach ($patients as $patient)
                             <option value="{{ $patient->id }}">{{ $patient->list_name }}</option>
                         @endforeach
                     </select>
-                    <x-text-input name="title" placeholder="Titolo" required />
-                    <x-text-input name="starts_at" type="datetime-local" required />
-                    <x-text-input name="ends_at" type="datetime-local" required />
+                    <x-text-input name="title" placeholder="Titolo appuntamento" class="md:col-span-2" required />
                     <select name="type" class="app-field">
-                        <option value="visit">Visita</option>
-                        <option value="personal">Personale</option>
-                        <option value="holiday">Ferie</option>
-                        <option value="absence">Assenza</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category['key'] }}">{{ $category['label'] }}</option>
+                        @endforeach
                     </select>
                     <select name="status" class="app-field">
-                        <option value="scheduled">Programmato</option>
-                        <option value="confirmed">Confermato</option>
-                        <option value="completed">Svolto</option>
-                        <option value="cancelled">Annullato</option>
-                        <option value="no_show">Non presentato</option>
+                        @foreach ($statusLabels as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
                     </select>
-                    <x-text-input name="color" placeholder="Colore es. #2563eb" />
-                    <x-text-input name="notes" placeholder="Note" />
-                    <div class="md:col-span-4">
-                        <x-primary-button>Crea appuntamento</x-primary-button>
+                    <x-text-input name="starts_at" type="datetime-local" :value="$defaultStart" required />
+                    <x-text-input name="ends_at" type="datetime-local" :value="$defaultEnd" required />
+                    <x-text-input name="notes" placeholder="Note" class="md:col-span-3" />
+                    <input type="hidden" name="color" value="">
+                    <div class="md:col-span-1">
+                        <x-primary-button class="w-full justify-center">Crea</x-primary-button>
                     </div>
                 </form>
             </section>
 
-            <section class="app-card p-6">
-                <h3 class="font-semibold text-gray-900">Appuntamenti</h3>
-                <div class="mt-4 divide-y divide-gray-100">
-                    @forelse ($appointments as $appointment)
-                        <div class="py-4">
-                            <div class="flex flex-wrap items-start justify-between gap-4">
-                                <div>
-                                    <p class="font-medium text-gray-900">{{ $appointment->title }}</p>
-                                    <p class="mt-1 text-sm text-gray-500">
-                                        {{ $appointment->starts_at->format('d/m/Y H:i') }} - {{ $appointment->ends_at->format('H:i') }}
-                                        @if ($appointment->patient)
-                                            - {{ $appointment->patient->list_name }}
-                                        @endif
-                                    </p>
-                                </div>
-                                <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">{{ $appointment->status }}</span>
-                            </div>
-                            <details class="mt-3">
-                                <summary class="cursor-pointer text-sm font-medium text-gray-700">Modifica appuntamento</summary>
-                                <form method="POST" action="{{ route('appointments.update', $appointment) }}" class="mt-4 grid gap-3 rounded-md border border-gray-200 p-4 md:grid-cols-4">
-                                    @csrf
-                                    @method('PATCH')
-                                    <select name="patient_id" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
-                                        <option value="">Impegno personale</option>
-                                        @foreach ($patients as $patient)
-                                            <option value="{{ $patient->id }}" @selected($appointment->patient_id === $patient->id)>{{ $patient->list_name }}</option>
-                                        @endforeach
-                                    </select>
-                                    <x-text-input name="title" :value="$appointment->title" required />
-                                    <x-text-input name="starts_at" type="datetime-local" :value="$appointment->starts_at->format('Y-m-d\\TH:i')" required />
-                                    <x-text-input name="ends_at" type="datetime-local" :value="$appointment->ends_at->format('Y-m-d\\TH:i')" required />
-                                    <select name="type" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
-                                        @foreach (['visit' => 'Visita', 'personal' => 'Personale', 'holiday' => 'Ferie', 'absence' => 'Assenza'] as $value => $label)
-                                            <option value="{{ $value }}" @selected($appointment->type === $value)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                    <select name="status" class="rounded-md border-gray-300 shadow-sm focus:border-gray-900 focus:ring-gray-900">
-                                        @foreach (['scheduled' => 'Programmato', 'confirmed' => 'Confermato', 'completed' => 'Svolto', 'cancelled' => 'Annullato', 'no_show' => 'Non presentato'] as $value => $label)
-                                            <option value="{{ $value }}" @selected($appointment->status === $value)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                    <x-text-input name="color" :value="$appointment->color" />
-                                    <x-text-input name="notes" :value="$appointment->notes" />
-                                    <div class="flex justify-between gap-3 md:col-span-4">
-                                        <button form="delete-appointment-{{ $appointment->id }}" class="text-sm font-medium text-red-700 hover:text-red-900" onclick="return confirm('Eliminare questo appuntamento?')">Elimina</button>
-                                        <x-primary-button>Salva appuntamento</x-primary-button>
-                                    </div>
-                                </form>
-                                <form id="delete-appointment-{{ $appointment->id }}" method="POST" action="{{ route('appointments.destroy', $appointment) }}" class="hidden">
-                                    @csrf
-                                    @method('DELETE')
-                                </form>
-                            </details>
+            <section class="app-card overflow-hidden">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-white px-5 py-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <a href="{{ route('appointments.index', ['view' => $view, 'date' => $prevDate->toDateString()]) }}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white text-xl font-bold text-sage shadow-sm hover:bg-mist" aria-label="Periodo precedente">
+                            &lsaquo;
+                        </a>
+                        <div>
+                            <p class="text-xs font-bold uppercase text-muted">Calendario</p>
+                            <h3 class="text-lg font-semibold text-gray-900">{{ ucfirst($periodTitle) }}</h3>
                         </div>
-                    @empty
-                        <p class="py-6 text-sm text-gray-500">Nessun appuntamento nel periodo selezionato.</p>
-                    @endforelse
+                        <a href="{{ route('appointments.index', ['view' => $view, 'date' => $nextDate->toDateString()]) }}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white text-xl font-bold text-sage shadow-sm hover:bg-mist" aria-label="Periodo successivo">
+                            &rsaquo;
+                        </a>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ($categories as $category)
+                            <span class="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-xs font-bold text-ink">
+                                <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ $category['color'] }}"></span>
+                                {{ $category['label'] }}
+                            </span>
+                        @endforeach
+                    </div>
                 </div>
+
+                @if ($view === 'month')
+                    <div class="grid grid-cols-7 border-b border-line bg-mist text-center text-xs font-bold uppercase text-muted">
+                        @foreach (['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] as $dayLabel)
+                            <div class="border-r border-line px-2 py-3 last:border-r-0">{{ $dayLabel }}</div>
+                        @endforeach
+                    </div>
+                    <div class="grid grid-cols-7 bg-white">
+                        @foreach ($calendarDays as $day)
+                            @php
+                                $dayEvents = $appointmentsByDate->get($day->toDateString(), collect());
+                                $isToday = $day->isSameDay($today);
+                                $outsideMonth = ! $day->isSameMonth($date);
+                            @endphp
+                            <div class="min-h-36 border-b border-r border-line p-2 last:border-r-0 {{ $isToday ? 'bg-[#eef6f4]' : ($outsideMonth ? 'bg-gray-50 text-gray-400' : 'bg-white') }}">
+                                <div class="flex items-center justify-between">
+                                    <span class="inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold {{ $isToday ? 'bg-sage text-white' : 'text-ink' }}">{{ $day->format('d') }}</span>
+                                    @if ($dayEvents->isNotEmpty())
+                                        <span class="rounded-full bg-mist px-2 py-0.5 text-[11px] font-bold text-sage">{{ $dayEvents->count() }}</span>
+                                    @endif
+                                </div>
+                                <div class="mt-2 space-y-1">
+                                    @foreach ($dayEvents->take(4) as $appointment)
+                                        <details class="group rounded-lg border border-line bg-white p-2 text-xs shadow-sm">
+                                            <summary class="cursor-pointer list-none">
+                                                <span class="block truncate font-bold text-ink">
+                                                    <span class="mr-1 inline-block h-2 w-2 rounded-full" style="background-color: {{ $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a') }}"></span>
+                                                    {{ $appointment->starts_at->format('H:i') }} {{ $appointment->title }}
+                                                </span>
+                                            </summary>
+                                            @include('appointments.partials.edit-form', ['appointment' => $appointment])
+                                        </details>
+                                    @endforeach
+                                    @if ($dayEvents->count() > 4)
+                                        <p class="text-xs font-bold text-muted">+ {{ $dayEvents->count() - 4 }} altri</p>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="overflow-x-auto">
+                        <div class="min-w-[980px]">
+                            <div class="grid border-b border-line bg-mist text-xs font-bold uppercase text-muted" style="grid-template-columns: 82px repeat({{ $calendarDays->count() }}, minmax(180px, 1fr));">
+                                <div class="border-r border-line px-3 py-3">Ora</div>
+                                @foreach ($calendarDays as $day)
+                                    <div class="border-r border-line px-3 py-3 last:border-r-0 {{ $day->isSameDay($today) ? 'bg-[#dff1ed] text-sage' : '' }}">
+                                        <span class="block">{{ $day->translatedFormat('D') }}</span>
+                                        <span class="text-base text-ink">{{ $day->format('d/m') }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="grid bg-white" style="grid-template-columns: 82px repeat({{ $calendarDays->count() }}, minmax(180px, 1fr));">
+                                <div class="border-r border-line">
+                                    @foreach ($timeSlots as $slot)
+                                        <div class="border-b border-line px-3 pt-2 text-xs font-bold text-muted" style="height: {{ $slotHeight }}px;">{{ $slot }}</div>
+                                    @endforeach
+                                </div>
+
+                                @foreach ($calendarDays as $day)
+                                    @php
+                                        $dayStart = $day->copy()->setTimeFromTimeString($settings['agenda_start_time']);
+                                        $dayEnd = $day->copy()->setTimeFromTimeString($settings['agenda_end_time']);
+                                        $dayEvents = $appointmentsByDate->get($day->toDateString(), collect());
+                                    @endphp
+                                    <div class="relative border-r border-line last:border-r-0 {{ $day->isSameDay($today) ? 'bg-[#f4faf8]' : 'bg-white' }}" style="height: {{ $agendaBodyHeight }}px;">
+                                        @foreach ($timeSlots as $slot)
+                                            <div class="border-b border-line/80" style="height: {{ $slotHeight }}px;"></div>
+                                        @endforeach
+
+                                        @foreach ($dayEvents as $appointment)
+                                            @php
+                                                $visibleStart = $appointment->starts_at->copy()->lessThan($dayStart) ? $dayStart->copy() : $appointment->starts_at->copy();
+                                                $visibleEnd = $appointment->ends_at->copy()->greaterThan($dayEnd) ? $dayEnd->copy() : $appointment->ends_at->copy();
+                                                $minutesFromStart = max(0, $dayStart->diffInMinutes($visibleStart, false));
+                                                $durationMinutes = max(15, $visibleStart->diffInMinutes($visibleEnd, false));
+                                                $eventTop = ($minutesFromStart / $slotMinutes) * $slotHeight;
+                                                $eventHeight = max(30, (($durationMinutes / $slotMinutes) * $slotHeight) - 6);
+                                            @endphp
+                                            <details class="absolute left-2 right-2 z-10 overflow-visible rounded-xl border border-line bg-white p-2 shadow-sm" style="top: {{ $eventTop + 3 }}px; min-height: {{ $eventHeight }}px;">
+                                                <summary class="cursor-pointer list-none">
+                                                    <div class="flex items-start gap-2">
+                                                        <span class="mt-1 h-3 w-3 shrink-0 rounded-full" style="background-color: {{ $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a') }}"></span>
+                                                        <div class="min-w-0">
+                                                            <p class="truncate text-sm font-bold text-ink">{{ $appointment->title }}</p>
+                                                            <p class="mt-0.5 text-xs text-muted">{{ $appointment->starts_at->format('H:i') }} - {{ $appointment->ends_at->format('H:i') }}</p>
+                                                            <p class="truncate text-xs text-muted">{{ $appointment->patient?->list_name ?: ($categoryMap->get($appointment->type)['label'] ?? 'Impegno personale') }}</p>
+                                                            @if ($eventHeight > 54)
+                                                                <span class="mt-1 inline-flex rounded-full bg-mist px-2 py-0.5 text-[11px] font-bold text-sage">{{ $statusLabels[$appointment->status] ?? $appointment->status }}</span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </summary>
+                                                @include('appointments.partials.edit-form', ['appointment' => $appointment])
+                                            </details>
+                                        @endforeach
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </section>
         </div>
     </div>

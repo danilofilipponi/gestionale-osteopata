@@ -15,6 +15,8 @@ class Appointment extends Model
         'type',
         'status',
         'color',
+        'google_event_id',
+        'google_calendar_id',
         'notes',
     ];
 

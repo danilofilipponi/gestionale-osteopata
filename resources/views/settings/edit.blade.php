@@ -445,6 +445,219 @@
                     </section>
                     @endif
 
+                    @if ($section === 'agenda')
+                    <form method="POST" action="{{ route('settings.agenda.update') }}" class="space-y-6">
+                        @csrf
+                        @method('PATCH')
+
+                        <section class="app-card p-6">
+                            <div class="flex flex-wrap items-start justify-between gap-4">
+                                <div>
+                                    <h3 class="font-semibold text-gray-900">Impostazioni agenda</h3>
+                                    <p class="mt-1 text-sm text-gray-500">Orari, durata appuntamenti, categorie e predisposizione Google Calendar.</p>
+                                </div>
+                                <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Calendario</span>
+                            </div>
+
+                            <div class="mt-5 grid gap-4 md:grid-cols-4">
+                                <div>
+                                    <x-input-label for="agenda_start_time" value="Ora inizio giornata" />
+                                    <x-text-input id="agenda_start_time" name="agenda_start_time" type="time" class="mt-1 block w-full" :value="old('agenda_start_time', $agendaSettings['agenda_start_time'])" required />
+                                    <x-input-error :messages="$errors->get('agenda_start_time')" class="mt-2" />
+                                </div>
+                                <div>
+                                    <x-input-label for="agenda_end_time" value="Ora fine giornata" />
+                                    <x-text-input id="agenda_end_time" name="agenda_end_time" type="time" class="mt-1 block w-full" :value="old('agenda_end_time', $agendaSettings['agenda_end_time'])" required />
+                                    <x-input-error :messages="$errors->get('agenda_end_time')" class="mt-2" />
+                                </div>
+                                <div>
+                                    <x-input-label for="agenda_slot_minutes" value="Intervallo griglia" />
+                                    <select id="agenda_slot_minutes" name="agenda_slot_minutes" class="app-field mt-1 block w-full">
+                                        @foreach ([15, 30, 45, 60] as $minutes)
+                                            <option value="{{ $minutes }}" @selected((int) old('agenda_slot_minutes', $agendaSettings['agenda_slot_minutes']) === $minutes)>{{ $minutes }} minuti</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <x-input-label for="agenda_default_duration" value="Durata appuntamento" />
+                                    <select id="agenda_default_duration" name="agenda_default_duration" class="app-field mt-1 block w-full">
+                                        @foreach ([30, 45, 60, 75, 90, 120] as $minutes)
+                                            <option value="{{ $minutes }}" @selected((int) old('agenda_default_duration', $agendaSettings['agenda_default_duration']) === $minutes)>{{ $minutes }} minuti</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="app-card p-6">
+                            <h3 class="font-semibold text-gray-900">Categorie appuntamento</h3>
+                            <p class="mt-1 text-sm text-gray-500">Le categorie attive compaiono nella tendina della pagina agenda e ne determinano il colore.</p>
+
+                            <div class="mt-5 overflow-x-auto">
+                                <table class="w-full min-w-[720px] text-left text-sm">
+                                    <thead>
+                                        <tr class="border-b border-line text-xs uppercase text-muted">
+                                            <th class="pb-3">Codice</th>
+                                            <th class="pb-3">Categoria</th>
+                                            <th class="pb-3">Colore</th>
+                                            <th class="pb-3">Calendario Google</th>
+                                            <th class="pb-3">Anteprima</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-line">
+                                        @for ($index = 0; $index < 8; $index++)
+                                            @php
+                                                $category = old("categories.$index", $agendaCategories[$index] ?? []);
+                                                $color = $category['color'] ?? '#5f948a';
+                                                $categoryGoogleCalendarId = $category['google_calendar_id'] ?? '';
+                                            @endphp
+                                            <tr>
+                                                <td class="py-3 pr-3">
+                                                    <input name="categories[{{ $index }}][key]" class="app-field w-40" value="{{ $category['key'] ?? '' }}" placeholder="visit">
+                                                </td>
+                                                <td class="py-3 pr-3">
+                                                    <input name="categories[{{ $index }}][label]" class="app-field w-full min-w-80" value="{{ $category['label'] ?? '' }}" placeholder="Visita osteopatica">
+                                                </td>
+                                                <td class="py-3 pr-3">
+                                                    <input name="categories[{{ $index }}][color]" type="color" class="h-12 w-20 rounded-xl border border-line bg-white p-1" value="{{ $color }}">
+                                                </td>
+                                                <td class="py-3 pr-3">
+                                                    <select name="categories[{{ $index }}][google_calendar_id]" class="app-field min-w-64">
+                                                        <option value="">Calendario principale / default</option>
+                                                        @foreach ($googleCalendars as $googleCalendar)
+                                                            <option value="{{ $googleCalendar['id'] ?? '' }}" @selected($categoryGoogleCalendarId === ($googleCalendar['id'] ?? ''))>
+                                                                {{ $googleCalendar['summary'] ?? $googleCalendar['id'] }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </td>
+                                                <td class="py-3 pr-3">
+                                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold text-white" style="background-color: {{ $color }};">{{ $category['label'] ?? 'Categoria' }}</span>
+                                                </td>
+                                            </tr>
+                                        @endfor
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <section class="app-card p-6">
+                            <div class="flex flex-wrap items-start justify-between gap-4">
+                                <div>
+                                    <h3 class="font-semibold text-gray-900">Google Calendar</h3>
+                                    <p class="mt-1 text-sm text-gray-500">Predisposizione del collegamento. L'attivazione completa richiedera le credenziali Google Cloud.</p>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="rounded-full px-3 py-1 text-xs font-bold {{ $googleCalendarStatus['connected'] ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700' }}">
+                                        {{ $googleCalendarStatus['connected'] ? 'Collegato' : 'Non collegato' }}
+                                    </span>
+                                    <label class="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-2 text-sm font-bold text-ink">
+                                        <input type="checkbox" name="google_calendar_enabled" value="1" @checked((bool) old('google_calendar_enabled', (int) $agendaSettings['google_calendar_enabled'])) class="rounded border-gray-300 text-sage focus:ring-sage">
+                                        Attiva collegamento
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <x-input-label for="google_calendar_id" value="ID calendario Google" />
+                                    <x-text-input id="google_calendar_id" name="google_calendar_id" class="mt-1 block w-full" :value="old('google_calendar_id', $agendaSettings['google_calendar_id'])" placeholder="nome@gmail.com oppure calendar-id" />
+                                </div>
+                                <div>
+                                    <x-input-label for="google_calendar_sync_mode" value="Modalita collegamento" />
+                                    <select id="google_calendar_sync_mode" name="google_calendar_sync_mode" class="app-field mt-1 block w-full">
+                                        <option value="read" @selected(old('google_calendar_sync_mode', $agendaSettings['google_calendar_sync_mode']) === 'read')>Solo lettura</option>
+                                        <option value="write" @selected(old('google_calendar_sync_mode', $agendaSettings['google_calendar_sync_mode']) === 'write')>Solo invio appuntamenti</option>
+                                        <option value="two_way" @selected(old('google_calendar_sync_mode', $agendaSettings['google_calendar_sync_mode']) === 'two_way')>Sincronizzazione completa</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <x-input-label for="google_calendar_client_id" value="Client ID Google" />
+                                    <x-text-input id="google_calendar_client_id" name="google_calendar_client_id" class="mt-1 block w-full" :value="old('google_calendar_client_id', $agendaSettings['google_calendar_client_id'])" placeholder="Usato solo come promemoria: il valore reale e nel file .env" />
+                                </div>
+                                <div>
+                                    <x-input-label for="google_calendar_api_key" value="API key Google" />
+                                    <x-text-input id="google_calendar_api_key" name="google_calendar_api_key" class="mt-1 block w-full" :value="old('google_calendar_api_key', $agendaSettings['google_calendar_api_key'])" />
+                                </div>
+                            </div>
+
+                            <div class="mt-5 rounded-2xl border border-line bg-mist p-5 text-sm text-muted">
+                                Per il calendario principale usa <strong>primary</strong> come ID calendario. Il Client Secret resta nel file locale .env e non viene pubblicato su GitHub.
+                                @if ($googleCalendarStatus['connected_at'])
+                                    <span class="mt-1 block">Ultimo collegamento: {{ $googleCalendarStatus['connected_at'] }}</span>
+                                @endif
+                            </div>
+
+                            @if ($googleCalendarStatus['connected'])
+                                <div class="mt-5 rounded-2xl border border-line bg-white p-5">
+                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <div>
+                                            <h4 class="text-sm font-bold uppercase text-muted">Calendari da visualizzare</h4>
+                                            <p class="mt-1 text-sm text-gray-500">Seleziona quali calendari Google importare e mostrare nell'agenda.</p>
+                                        </div>
+                                        <button type="submit" form="google-calendar-refresh-form" class="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink shadow-sm hover:bg-mist">
+                                            Aggiorna lista calendari
+                                        </button>
+                                    </div>
+
+                                    @if ($googleCalendars === [])
+                                        <div class="mt-4 rounded-xl border border-dashed border-line bg-mist p-4 text-sm text-muted">
+                                            Nessun calendario caricato. Clicca <strong>Aggiorna lista calendari</strong> per leggere i calendari dal tuo account Google.
+                                        </div>
+                                    @else
+                                        <div class="mt-4 grid gap-3 md:grid-cols-2">
+                                            @foreach ($googleCalendars as $calendar)
+                                                @php
+                                                    $calendarId = $calendar['id'] ?? '';
+                                                    $calendarColor = $calendar['backgroundColor'] ?? '#64748b';
+                                                @endphp
+                                                <label class="flex items-start gap-3 rounded-xl border border-line bg-mist/60 p-4 text-sm">
+                                                    <input type="checkbox" name="google_calendar_selected_ids[]" value="{{ $calendarId }}" @checked(in_array($calendarId, $selectedGoogleCalendarIds, true)) class="mt-1 rounded border-gray-300 text-sage focus:ring-sage">
+                                                    <span class="mt-1 h-3 w-3 shrink-0 rounded-full" style="background-color: {{ $calendarColor }}"></span>
+                                                    <span class="min-w-0">
+                                                        <span class="block truncate font-bold text-ink">{{ $calendar['summary'] ?? $calendarId }}</span>
+                                                        <span class="mt-0.5 block truncate text-xs text-muted">{{ ($calendar['primary'] ?? false) ? 'Calendario principale' : $calendarId }}</span>
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+
+                            <div class="mt-5 flex flex-wrap justify-end gap-3">
+                                @if ($googleCalendarStatus['configured'])
+                                    <a href="{{ route('google.calendar.connect') }}" class="inline-flex items-center rounded-xl border border-sage bg-white px-4 py-2.5 text-sm font-bold text-sage shadow-sm hover:bg-mist">
+                                        Collega Google Calendar
+                                    </a>
+                                    @if ($googleCalendarStatus['connected'])
+                                        <select name="sync_year" form="google-calendar-sync-form" class="app-field min-w-28 py-2 pr-9">
+                                            @for ($year = now()->year - 2; $year <= now()->year + 2; $year++)
+                                                <option value="{{ $year }}" @selected($year === now()->year)>{{ $year }}</option>
+                                            @endfor
+                                        </select>
+                                        <button type="submit" form="google-calendar-sync-form" class="inline-flex items-center rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">
+                                            Sincronizza anno
+                                        </button>
+                                        <button type="submit" form="google-calendar-disconnect-form" class="inline-flex items-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-700 shadow-sm hover:bg-red-50">
+                                            Scollega
+                                        </button>
+                                    @endif
+                                @else
+                                    <span class="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700">Credenziali Google mancanti nel file .env</span>
+                                @endif
+                            </div>
+                        </section>
+
+                        <div class="flex justify-end">
+                            <x-primary-button>Salva impostazioni agenda</x-primary-button>
+                        </div>
+                    </form>
+                    <form id="google-calendar-sync-form" method="POST" action="{{ route('google.calendar.sync') }}" class="hidden">@csrf</form>
+                    <form id="google-calendar-disconnect-form" method="POST" action="{{ route('google.calendar.disconnect') }}" class="hidden">@csrf</form>
+                    <form id="google-calendar-refresh-form" method="POST" action="{{ route('google.calendar.calendars') }}" class="hidden">@csrf</form>
+                    @endif
+
                     @if ($section === 'sessions')
                     <form method="POST" action="{{ route('settings.sessions.update') }}" class="space-y-6">
                         @csrf
@@ -512,6 +725,7 @@
                             <a href="{{ route('settings.edit') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'studio' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Dati studio</a>
                             <a href="{{ route('settings.patients') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'patients' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni pazienti</a>
                             <a href="{{ route('settings.sessions') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'sessions' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni sedute</a>
+                            <a href="{{ route('settings.agenda') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'agenda' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni agenda</a>
                             <a href="{{ route('settings.invoices') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'invoices' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni fatture</a>
                             <a href="{{ route('settings.users') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'users' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Utenti e password</a>
                             <div class="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-500">Numerazione documenti</div>

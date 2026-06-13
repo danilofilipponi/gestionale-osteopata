@@ -75,14 +75,16 @@ class PrivacyConsentPdf
 
         $cursor = $this->textWrap($x, $y, 'CONSENSO INFORMATO AL TRATTAMENTO OSTEOPATICO E INFORMATIVA PRIVACY GDPR', $w, 11.2, 14, true);
         $this->text($x, $cursor + 10, 'OSTEOPATA: DANILO FILIPPONI', 10, true);
-        $this->text($x, $cursor + 25, 'Sedi operative:', 8.5, true);
-        $this->text($x + 14, $cursor + 39, '- Via Carlo Gozzi n. 8 - 61032 Fano (PU)', 8.5);
-        $this->text($x + 14, $cursor + 53, '- Via Purgotti n. 19 - 61043 Cagli (PU)', 8.5);
-        $this->text($x, $cursor + 70, 'Telefono: 3202181376', 8.5);
-        $this->text($x, $cursor + 84, 'E-mail: info@osteopatafilipponi.it', 8.5);
-        $this->line($x, $cursor + 102, $x + $w, $cursor + 102);
+        $this->text($x, $cursor + 25, 'Sede legale: Via Madonna Ponte 33 - 61032 Fano (PU)', 8.5);
+        $this->text($x, $cursor + 39, 'Codice fiscale: FLPDNL85R01D488C    Partita IVA: 02429900414', 8.5);
+        $this->text($x, $cursor + 56, 'Sedi operative:', 8.5, true);
+        $this->text($x + 14, $cursor + 70, '- Via Carlo Gozzi n. 8 - 61032 Fano (PU)', 8.5);
+        $this->text($x + 14, $cursor + 84, '- Via Purgotti n. 19 - 61043 Cagli (PU)', 8.5);
+        $this->text($x, $cursor + 101, 'Telefono: 3202181376', 8.5);
+        $this->text($x, $cursor + 115, 'E-mail: info@osteopatafilipponi.it', 8.5);
+        $this->line($x, $cursor + 133, $x + $w, $cursor + 133);
 
-        $cursor += 128;
+        $cursor += 158;
         $this->section($x, $cursor, 'DATI DEL PAZIENTE');
         $cursor += 22;
         $this->text($x, $cursor, 'Nome e Cognome: '.$patient->full_name, 9, true);
@@ -115,7 +117,7 @@ class PrivacyConsentPdf
         $cursor += 34;
 
         $privacySections = [
-            ['1. TITOLARE DEL TRATTAMENTO', 'Danilo Filipponi. Via Carlo Gozzi 8 - Fano (PU). Via Purgotti 19 - Cagli (PU). Email: danilo.filipponi@gmail.com. Telefono: 3202181376.'],
+            ['1. TITOLARE DEL TRATTAMENTO', 'Osteopata: Danilo Filipponi. Sede legale: Via Madonna Ponte 33 - 61032 Fano (PU). Codice fiscale: FLPDNL85R01D488C. Partita IVA: 02429900414. Sedi operative: Via Carlo Gozzi n. 8 - 61032 Fano (PU); Via Purgotti n. 19 - 61043 Cagli (PU). Telefono: 3202181376. E-mail: info@osteopatafilipponi.it.'],
             ['2. FINALITA DEL TRATTAMENTO', 'I dati personali e i dati particolari relativi alla salute vengono trattati per: gestione della prestazione osteopatica; redazione e conservazione della documentazione sanitaria; adempimenti fiscali e amministrativi; tutela dei diritti del professionista e del paziente; gestione degli appuntamenti.'],
             ['3. MODALITA DI TRATTAMENTO', 'I dati sono trattati nel rispetto dei principi di liceita, correttezza, trasparenza, minimizzazione, esattezza e integrita previsti dal GDPR. I dati possono essere conservati sia in formato cartaceo sia elettronico mediante software gestionali, sistemi cloud, servizi di posta elettronica e strumenti di comunicazione professionale.'],
             ['4. CONSERVAZIONE', "I dati saranno conservati per il tempo necessario all'esecuzione delle prestazioni professionali e comunque per il periodo richiesto dagli obblighi fiscali, amministrativi e di tutela professionale previsti dalla normativa vigente."],

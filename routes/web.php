@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\ProfileController;
@@ -54,14 +55,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings/users', [SettingsController::class, 'users'])->name('settings.users');
     Route::get('/settings/invoices', [SettingsController::class, 'invoices'])->name('settings.invoices');
     Route::get('/settings/sessions', [SettingsController::class, 'sessions'])->name('settings.sessions');
+    Route::get('/settings/agenda', [SettingsController::class, 'agenda'])->name('settings.agenda');
     Route::patch('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::patch('/settings/invoices', [SettingsController::class, 'updateInvoices'])->name('settings.invoices.update');
     Route::patch('/settings/sessions', [SettingsController::class, 'updateSessions'])->name('settings.sessions.update');
+    Route::patch('/settings/agenda', [SettingsController::class, 'updateAgenda'])->name('settings.agenda.update');
     Route::get('/settings/invoices/export-xml', [SettingsController::class, 'exportInvoicesXml'])->name('settings.invoices.export-xml');
     Route::post('/settings/invoices/import', [SettingsController::class, 'importInvoices'])->name('settings.invoices.import');
     Route::post('/settings/users', [SettingsController::class, 'storeUser'])->name('settings.users.store');
     Route::patch('/settings/users/{user}', [SettingsController::class, 'updateUser'])->name('settings.users.update');
     Route::delete('/settings/users/{user}', [SettingsController::class, 'destroyUser'])->name('settings.users.destroy');
+
+    Route::get('/google/calendar/connect', [GoogleCalendarController::class, 'connect'])->name('google.calendar.connect');
+    Route::get('/google/calendar/callback', [GoogleCalendarController::class, 'callback'])->name('google.calendar.callback');
+    Route::post('/google/calendar/disconnect', [GoogleCalendarController::class, 'disconnect'])->name('google.calendar.disconnect');
+    Route::post('/google/calendar/sync', [GoogleCalendarController::class, 'sync'])->name('google.calendar.sync');
+    Route::post('/google/calendar/calendars', [GoogleCalendarController::class, 'refreshCalendars'])->name('google.calendar.calendars');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
