@@ -720,6 +720,46 @@
                         </section>
                     </form>
                     @endif
+
+                    @if ($section === 'accounting')
+                    <section class="app-card p-6">
+                        <div class="flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Impostazioni contabilita</h3>
+                                <p class="mt-1 text-sm text-gray-500">Base di configurazione per anno contabile, spese e imposte.</p>
+                            </div>
+                            <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Contabilita</span>
+                        </div>
+
+                        <div class="mt-5 grid gap-4 md:grid-cols-3">
+                            <div>
+                                <x-input-label value="Anno fiscale predefinito" />
+                                <select class="app-field mt-1 block w-full">
+                                    @foreach (range((int) now()->year, (int) now()->year - 5) as $year)
+                                        <option value="{{ $year }}" @selected($year === (int) now()->year)>{{ $year }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <x-input-label value="Regime fiscale" />
+                                <select class="app-field mt-1 block w-full">
+                                    <option>Forfettario</option>
+                                    <option>Ordinario</option>
+                                </select>
+                            </div>
+                            <div>
+                                <x-input-label value="Importazione spese" />
+                                <button type="button" class="mt-1 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm font-bold text-ink shadow-sm hover:bg-mist">
+                                    Configura carica spese
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 rounded-xl border border-dashed border-line bg-mist p-5 text-sm font-semibold text-muted">
+                            Sezione pronta: qui collegheremo categorie spesa, aliquote e calcoli imposte quando definiamo il modello contabile.
+                        </div>
+                    </section>
+                    @endif
                 </div>
 
                 <aside class="space-y-6">
@@ -731,6 +771,7 @@
                             <a href="{{ route('settings.sessions') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'sessions' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni sedute</a>
                             <a href="{{ route('settings.agenda') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'agenda' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni agenda</a>
                             <a href="{{ route('settings.invoices') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'invoices' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni fatture</a>
+                            <a href="{{ route('settings.accounting') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'accounting' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni contabilita</a>
                             <a href="{{ route('settings.users') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'users' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Utenti e password</a>
                             <div class="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-500">Numerazione documenti</div>
                             <div class="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-500">Consensi e privacy</div>

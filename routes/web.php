@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Http\Controllers\InvoiceController;
@@ -21,6 +22,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings/patients/export', [PatientController::class, 'export'])->name('patients.export');
     Route::post('/settings/patients/import', [PatientController::class, 'import'])->name('patients.import');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
+    Route::post('/accounting/expenses/import', [AccountingController::class, 'importExpenses'])->name('accounting.expenses.import');
+    Route::delete('/accounting/expenses', [AccountingController::class, 'deleteExpenses'])->name('accounting.expenses.delete');
     Route::resource('patients', PatientController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::get('/patients/{patient}/anamnesis', [PatientController::class, 'anamnesis'])->name('patients.anamnesis.index');
     Route::get('/patients/{patient}/sessions', [PatientController::class, 'sessions'])->name('patients.sessions.index');
@@ -60,6 +64,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings/invoices', [SettingsController::class, 'invoices'])->name('settings.invoices');
     Route::get('/settings/sessions', [SettingsController::class, 'sessions'])->name('settings.sessions');
     Route::get('/settings/agenda', [SettingsController::class, 'agenda'])->name('settings.agenda');
+    Route::get('/settings/accounting', [SettingsController::class, 'accounting'])->name('settings.accounting');
     Route::patch('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::patch('/settings/invoices', [SettingsController::class, 'updateInvoices'])->name('settings.invoices.update');
     Route::patch('/settings/sessions', [SettingsController::class, 'updateSessions'])->name('settings.sessions.update');

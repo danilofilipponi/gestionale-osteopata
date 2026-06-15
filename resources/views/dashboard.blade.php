@@ -86,12 +86,12 @@
                                 $appointmentName = $appointment->patient?->list_name ?: $appointment->title;
                                 $appointmentSubtitle = $appointment->patient?->list_name ? $appointment->title : 'Impegno personale';
                             @endphp
-                            <a href="{{ route('appointments.index', ['view' => 'day', 'date' => $appointment->starts_at->toDateString()]) }}" class="grid grid-cols-[120px_1fr] hover:bg-gray-50">
-                                <div class="flex items-center border-r border-line px-6 py-2.5">
+                            <a href="{{ route('appointments.index', ['view' => 'day', 'date' => $appointment->starts_at->toDateString()]) }}" class="hover:bg-gray-50" style="display: grid; grid-template-columns: 148px minmax(0, 1fr);">
+                                <div class="flex items-center px-5 py-2.5" style="border-right: 1px solid #c8d9d5;">
                                     <span class="whitespace-nowrap text-sm font-bold text-ink">
-                                    {{ $appointment->starts_at->format('H:i') }}
-                                    <span class="text-muted">-</span>
-                                    {{ $appointment->ends_at->format('H:i') }}
+                                        {{ $appointment->starts_at->format('H:i') }}
+                                        <span class="text-muted">-</span>
+                                        {{ $appointment->ends_at->format('H:i') }}
                                     </span>
                                 </div>
                                 <div class="min-w-0 px-5 py-2.5">
@@ -133,69 +133,6 @@
                     </div>
                 </section>
             </div>
-
-            <section class="app-card overflow-hidden">
-                <div class="grid grid-cols-[150px_minmax(0,1fr)] gap-0">
-                    <aside class="border-r border-line bg-white p-4">
-                        <div class="inline-flex overflow-hidden rounded-t-md border-b border-sage text-xs font-bold">
-                            <span class="bg-white px-3 py-2 text-ink">Mese</span>
-                            <span class="bg-gray-200 px-3 py-2 text-muted">Trimestre</span>
-                        </div>
-
-                        <div class="mt-10">
-                            <p class="text-base font-semibold leading-tight text-ink">Fatturato<br>attivo</p>
-                            <p class="mt-3 text-xl font-black text-[#0070c9]">EUR {{ number_format($activeRevenueYearTotal, 2, ',', '.') }}</p>
-                        </div>
-                    </aside>
-
-                    <div class="p-4">
-                        <div class="relative flex items-center justify-center">
-                            <h3 class="text-xl font-black text-ink">Fatturato {{ now()->year }}</h3>
-                            <span class="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0070c9] text-sm font-black text-[#0070c9]">i</span>
-                        </div>
-
-                        <div class="mt-5 grid grid-cols-[44px_1fr] gap-3">
-                            <div class="relative h-64 text-[11px] font-semibold text-muted">
-                                @foreach ([100, 75, 50, 25, 0] as $tick)
-                                    @php
-                                        $value = ($maxActiveRevenue / 100) * $tick;
-                                    @endphp
-                                    <span class="absolute right-0 -translate-y-1/2" style="top: {{ 100 - $tick }}%">{{ number_format($value, 0, ',', '.') }}</span>
-                                @endforeach
-                            </div>
-
-                            <div class="relative h-64 overflow-hidden border-b border-l border-gray-400">
-                                @foreach ([0, 25, 50, 75, 100] as $line)
-                                    <div class="absolute left-0 right-0 border-t border-gray-300" style="bottom: {{ $line }}%"></div>
-                                @endforeach
-
-                                <div class="absolute inset-x-0 bottom-0 z-10 flex h-64 items-end gap-4 px-1">
-                                    @foreach ($activeRevenueChart as $item)
-                                        @php
-                                            $barHeight = $item['total'] > 0 ? max(8, round(($item['total'] / $maxActiveRevenue) * 236)) : 0;
-                                        @endphp
-                                        <div class="flex h-full min-w-0 flex-1 flex-col items-center justify-end">
-                                            <div class="w-full max-w-10 border border-[#0070c9] bg-[#dceeff] hover:bg-[#b7d7ee]" style="height: {{ $barHeight }}px;" title="{{ $item['month'] }}: EUR {{ number_format($item['total'], 2, ',', '.') }}"></div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <div></div>
-                            <div class="flex gap-4 px-1 pt-2">
-                                @foreach ($activeRevenueChart as $item)
-                                    <span class="min-w-0 flex-1 text-center text-[11px] font-semibold text-ink">{{ $item['month'] }}</span>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        <div class="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-ink">
-                            <span class="inline-block h-3 w-3 border border-[#0070c9] bg-[#dceeff]"></span>
-                            Attivo
-                        </div>
-                    </div>
-                </div>
-            </section>
         </div>
     </div>
 </x-app-layout>

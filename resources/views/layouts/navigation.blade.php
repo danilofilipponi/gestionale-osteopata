@@ -25,6 +25,9 @@
                     <x-nav-link :href="route('invoices.index')" :active="request()->routeIs('invoices.*')">
                         Fatture
                     </x-nav-link>
+                    <x-nav-link :href="route('accounting.index')" :active="request()->routeIs('accounting.*')">
+                        Contabilita
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -90,6 +93,9 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('invoices.index')" :active="request()->routeIs('invoices.*')">
                 Fatture
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('accounting.index')" :active="request()->routeIs('accounting.*')">
+                Contabilita
             </x-responsive-nav-link>
         </div>
 

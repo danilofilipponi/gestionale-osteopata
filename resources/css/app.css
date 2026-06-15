@@ -17,6 +17,10 @@
         color: #17312d;
     }
 
+    [x-cloak] {
+        display: none !important;
+    }
+
     button,
     input,
     textarea,

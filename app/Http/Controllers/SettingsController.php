@@ -46,6 +46,11 @@ class SettingsController extends Controller
         return $this->settingsView($request, 'agenda');
     }
 
+    public function accounting(Request $request)
+    {
+        return $this->settingsView($request, 'accounting');
+    }
+
     public function updateAgenda(Request $request)
     {
         $validated = $request->validate([
