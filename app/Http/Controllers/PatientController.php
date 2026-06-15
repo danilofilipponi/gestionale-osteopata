@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\TreatmentSession;
 use App\Support\PatientExcelExporter;
@@ -47,9 +48,15 @@ class PatientController extends Controller
         return view('patients.index', compact('patients'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('patients.create');
+        $patient = new Patient([
+            'last_name' => $request->query('last_name', ''),
+            'first_name' => $request->query('first_name', ''),
+        ]);
+        $pendingAppointmentId = $request->query('appointment_id');
+
+        return view('patients.create', compact('patient', 'pendingAppointmentId'));
     }
 
     public function export(Request $request)
@@ -93,9 +100,22 @@ class PatientController extends Controller
 
     public function store(Request $request)
     {
+        $appointmentData = $request->validate([
+            'appointment_id' => ['nullable', 'exists:appointments,id'],
+        ]);
         $patient = Patient::create($this->validatedPatient($request) + [
             'user_id' => Auth::id(),
         ]);
+
+        if (! empty($appointmentData['appointment_id'])) {
+            Appointment::whereKey($appointmentData['appointment_id'])
+                ->whereNull('patient_id')
+                ->update([
+                    'patient_id' => $patient->id,
+                    'patient_match_status' => 'matched',
+                    'title' => $patient->list_name,
+                ]);
+        }
 
         return redirect()
             ->route('patients.show', $patient)
@@ -317,9 +337,11 @@ class PatientController extends Controller
                     return $value;
                 }
 
-                $lines = preg_split('/\R/u', str_replace("\r", "\n", $value));
+                $value = preg_replace('/_x000D_/i', "\n", $value) ?? $value;
+                $value = str_replace(["\r\n", "\r"], "\n", $value);
+                $lines = preg_split('/\n/u', $value);
                 $lines = collect($lines)
-                    ->map(fn (string $line) => trim($line))
+                    ->map(fn (string $line) => trim(preg_replace('/[ \t]+/u', ' ', $line) ?? $line))
                     ->filter(fn (string $line) => $line !== '')
                     ->values();
 

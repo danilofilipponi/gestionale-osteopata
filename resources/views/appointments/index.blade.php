@@ -25,6 +25,14 @@
         $slotHeight = 26;
         $agendaStartMinutes = (int) now()->setTimeFromTimeString($settings['agenda_start_time'])->diffInMinutes(now()->setTimeFromTimeString($settings['agenda_end_time']));
         $agendaBodyHeight = max(count($timeSlots) * $slotHeight, $slotHeight);
+        $agendaPatients = $patients->map(function ($patient) {
+            return [
+                'id' => $patient->id,
+                'name' => $patient->list_name,
+                'phone' => $patient->phone,
+                'email' => $patient->email,
+            ];
+        })->values();
     @endphp
 
     <x-slot name="header">
@@ -56,44 +64,6 @@
                     {{ $errors->first() }}
                 </div>
             @endif
-
-            <section class="app-card bg-[#eef6f4] p-5">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <p class="text-xs font-bold uppercase text-muted">Nuovo appuntamento</p>
-                        <h3 class="text-lg font-semibold text-gray-900">Inserimento rapido in agenda</h3>
-                    </div>
-                    <span class="rounded-full bg-white px-3 py-1 text-xs font-bold text-sage">{{ $settings['agenda_default_duration'] }} minuti default</span>
-                </div>
-
-                <form method="POST" action="{{ route('appointments.store') }}" class="mt-4 grid gap-3 md:grid-cols-6">
-                    @csrf
-                    <select name="patient_id" class="app-field md:col-span-2">
-                        <option value="">Impegno personale</option>
-                        @foreach ($patients as $patient)
-                            <option value="{{ $patient->id }}">{{ $patient->list_name }}</option>
-                        @endforeach
-                    </select>
-                    <x-text-input name="title" placeholder="Titolo appuntamento" class="md:col-span-2" required />
-                    <select name="type" class="app-field">
-                        @foreach ($categories as $category)
-                            <option value="{{ $category['key'] }}">{{ $category['label'] }}</option>
-                        @endforeach
-                    </select>
-                    <select name="status" class="app-field">
-                        @foreach ($statusLabels as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    <x-text-input name="starts_at" type="datetime-local" :value="$defaultStart" required />
-                    <x-text-input name="ends_at" type="datetime-local" :value="$defaultEnd" required />
-                    <x-text-input name="notes" placeholder="Note" class="md:col-span-3" />
-                    <input type="hidden" name="color" value="">
-                    <div class="md:col-span-1">
-                        <x-primary-button class="w-full justify-center">Crea</x-primary-button>
-                    </div>
-                </form>
-            </section>
 
             <section class="app-card overflow-hidden">
                 <div class="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-white px-5 py-4">
@@ -184,8 +154,18 @@
                                         $dayEnd = $day->copy()->setTimeFromTimeString($settings['agenda_end_time']);
                                         $dayEvents = $appointmentsByDate->get($day->toDateString(), collect());
                                     @endphp
-                                    <div class="relative border-r border-line last:border-r-0 {{ $day->isSameDay($today) ? 'bg-[#f4faf8]' : 'bg-white' }}" style="height: {{ $agendaBodyHeight }}px;">
+                                    <div
+                                        class="relative cursor-pointer border-r border-line last:border-r-0 {{ $day->isSameDay($today) ? 'bg-[#f4faf8]' : 'bg-white' }}"
+                                        data-agenda-day
+                                        data-date="{{ $day->format('Y-m-d') }}"
+                                        data-start-time="{{ $settings['agenda_start_time'] }}"
+                                        data-slot-minutes="{{ $slotMinutes }}"
+                                        data-slot-height="{{ $slotHeight }}"
+                                        data-default-duration="{{ (int) $settings['agenda_default_duration'] }}"
+                                        style="height: {{ $agendaBodyHeight }}px;"
+                                    >
                                         <div class="pointer-events-none absolute inset-0 z-0" style="background-image: repeating-linear-gradient(to bottom, transparent 0, transparent {{ $slotHeight - 1 }}px, #b8cbc6 {{ $slotHeight - 1 }}px, #b8cbc6 {{ $slotHeight }}px);"></div>
+                                        <div class="pointer-events-none absolute left-0 right-0 z-[1] hidden bg-sage/10" data-agenda-slot-preview style="height: {{ $slotHeight }}px;"></div>
 
                                         @foreach ($dayEvents as $appointment)
                                             @php
@@ -199,7 +179,17 @@
                                             @php
                                                 $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
                                             @endphp
-                                            <button type="button" data-appointment-modal="appointment-modal-{{ $appointment->id }}" class="absolute left-0 right-0 z-10 box-border overflow-hidden rounded-xl border border-line bg-white p-2 text-left shadow-sm transition hover:bg-mist" style="top: {{ $eventTop + 2 }}px; width: 100%; min-height: {{ $eventHeight }}px; border-left: 5px solid {{ $appointmentColor }};">
+                                            <button
+                                                type="button"
+                                                data-appointment-modal="appointment-modal-{{ $appointment->id }}"
+                                                data-draggable-appointment
+                                                data-appointment-id="{{ $appointment->id }}"
+                                                data-starts-at="{{ $appointment->starts_at->format('Y-m-d\TH:i') }}"
+                                                data-ends-at="{{ $appointment->ends_at->format('Y-m-d\TH:i') }}"
+                                                draggable="true"
+                                                class="absolute left-0 right-0 z-10 box-border cursor-grab overflow-hidden rounded-xl border border-line bg-white p-2 text-left shadow-sm transition hover:bg-mist active:cursor-grabbing"
+                                                style="top: {{ $eventTop + 2 }}px; width: 100%; min-height: {{ $eventHeight }}px; border-left: 5px solid {{ $appointmentColor }};"
+                                            >
                                                 <div class="flex items-start gap-2">
                                                     <span class="mt-1 h-3 w-3 shrink-0 rounded-full" style="background-color: {{ $appointmentColor }}"></span>
                                                     <div class="min-w-0">
@@ -221,6 +211,9 @@
     </div>
 
     @push('modals')
+        @include('appointments.partials.create-modal')
+        @include('appointments.partials.patient-match-modal')
+
         @foreach ($appointments as $appointment)
             @php
                 $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
@@ -231,37 +224,351 @@
 
     @push('scripts')
         <script>
+            const agendaPatients = @json($agendaPatients);
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;',
+            }[char]));
+            const padNumber = (value) => String(value).padStart(2, '0');
+
+            const formatDateTimeLocal = (date) => {
+                return [
+                    date.getFullYear(),
+                    padNumber(date.getMonth() + 1),
+                    padNumber(date.getDate()),
+                ].join('-') + 'T' + [padNumber(date.getHours()), padNumber(date.getMinutes())].join(':');
+            };
+
+            const formatItalianPeriod = (start, end) => {
+                return [
+                    padNumber(start.getDate()),
+                    padNumber(start.getMonth() + 1),
+                    start.getFullYear(),
+                ].join('/') + ' ' + [padNumber(start.getHours()), padNumber(start.getMinutes())].join(':') + ' - ' + [padNumber(end.getHours()), padNumber(end.getMinutes())].join(':');
+            };
+
+            const minutesBetween = (start, end) => Math.max(15, Math.round((end - start) / 60000));
+
+            const slotDateFromClick = (column, clientY) => {
+                const rect = column.getBoundingClientRect();
+                const relativeY = Math.max(0, Math.min(clientY - rect.top, rect.height - 1));
+                const slotHeight = Number(column.dataset.slotHeight || 26);
+                const slotMinutes = Number(column.dataset.slotMinutes || 15);
+                const defaultDuration = Number(column.dataset.defaultDuration || 60);
+                const slotIndex = Math.floor(relativeY / slotHeight);
+                const [startHour, startMinute] = (column.dataset.startTime || '08:00').split(':').map(Number);
+                const start = new Date(`${column.dataset.date}T${padNumber(startHour)}:${padNumber(startMinute)}`);
+
+                start.setMinutes(start.getMinutes() + (slotIndex * slotMinutes));
+
+                const end = new Date(start);
+                end.setMinutes(end.getMinutes() + defaultDuration);
+
+                return { start, end, slotIndex, slotHeight };
+            };
+
+            const moveAppointment = async (appointmentId, startsAt, endsAt) => {
+                const response = await fetch(`{{ url('/appointments') }}/${appointmentId}/move`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        starts_at: formatDateTimeLocal(startsAt),
+                        ends_at: formatDateTimeLocal(endsAt),
+                    }),
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                    return;
+                }
+
+                const data = await response.json().catch(() => null);
+                const message = data?.message || Object.values(data?.errors || {})?.flat()?.[0] || 'Non sono riuscito a spostare l’appuntamento.';
+                alert(message);
+            };
+
+            const fillNewAppointmentModal = (start, end) => {
+                const modal = document.getElementById('new-appointment-modal');
+                const startsAt = modal?.querySelector('#new_starts_at');
+                const endsAt = modal?.querySelector('#new_ends_at');
+                const title = modal?.querySelector('[data-new-appointment-title]');
+                const period = modal?.querySelector('[data-new-appointment-period]');
+                const patientId = modal?.querySelector('#new_patient_id');
+                const appointmentTitle = modal?.querySelector('#new_title');
+                const results = modal?.querySelector('[data-patient-results]');
+
+                if (startsAt) {
+                    startsAt.value = formatDateTimeLocal(start);
+                }
+
+                if (endsAt) {
+                    endsAt.value = formatDateTimeLocal(end);
+                }
+
+                if (title) {
+                    title.textContent = 'Nuovo appuntamento';
+                }
+
+                if (period) {
+                    period.textContent = formatItalianPeriod(start, end);
+                }
+
+                if (patientId) {
+                    patientId.value = '';
+                }
+
+                if (appointmentTitle) {
+                    appointmentTitle.value = '';
+                }
+
+                if (results) {
+                    results.classList.add('hidden');
+                    results.innerHTML = '';
+                }
+
+                openAgendaModal(modal);
+                appointmentTitle?.focus();
+            };
+
+            const renderPatientResults = (input) => {
+                const modal = document.getElementById('new-appointment-modal');
+                const results = modal?.querySelector('[data-patient-results]');
+                const patientId = modal?.querySelector('#new_patient_id');
+                const query = input.value.trim().toLowerCase();
+
+                if (patientId) {
+                    patientId.value = '';
+                }
+
+                if (!results) {
+                    return;
+                }
+
+                if (query.length < 2) {
+                    results.classList.add('hidden');
+                    results.innerHTML = '';
+                    return;
+                }
+
+                const matches = agendaPatients
+                    .filter((patient) => patient.name.toLowerCase().includes(query))
+                    .slice(0, 8);
+
+                if (matches.length === 0) {
+                    results.innerHTML = '<div class="px-3 py-2 text-sm font-semibold text-muted">Nessun paziente trovato</div>';
+                    results.classList.remove('hidden');
+                    return;
+                }
+
+                results.innerHTML = matches.map((patient) => `
+                    <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-mist" data-patient-result-id="${patient.id}">
+                        <span class="block font-bold text-ink">${escapeHtml(patient.name)}</span>
+                        <span class="block text-xs text-muted">${escapeHtml([patient.phone, patient.email].filter(Boolean).join(' - '))}</span>
+                    </button>
+                `).join('');
+                results.classList.remove('hidden');
+            };
+
+            const closeAgendaModal = (modal) => {
+                if (!modal) {
+                    return;
+                }
+
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('overflow-hidden');
+            };
+
+            const openAgendaModal = (modal) => {
+                if (!modal) {
+                    return;
+                }
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('overflow-hidden');
+            };
+
+            let nativeDragState = null;
+            let nativeDragRecentlyFinished = false;
+
+            const finishNativeDrag = () => {
+                nativeDragState?.appointment?.classList.remove('opacity-40', 'ring-2', 'ring-sage');
+                nativeDragState = null;
+                document.querySelectorAll('[data-agenda-slot-preview]').forEach((preview) => preview.classList.add('hidden'));
+            };
+
+            document.addEventListener('dragstart', (event) => {
+                const appointment = event.target.closest('[data-draggable-appointment]');
+
+                if (!appointment) {
+                    return;
+                }
+
+                nativeDragState = {
+                    appointment,
+                    appointmentId: appointment.dataset.appointmentId,
+                    start: new Date(appointment.dataset.startsAt),
+                    end: new Date(appointment.dataset.endsAt),
+                };
+                appointment.classList.add('opacity-40', 'ring-2', 'ring-sage');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', appointment.dataset.appointmentId || '');
+            });
+
+            document.addEventListener('dragover', (event) => {
+                if (!nativeDragState) {
+                    return;
+                }
+
+                const dayColumn = event.target.closest('[data-agenda-day]');
+
+                if (!dayColumn) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+
+                const { slotIndex, slotHeight } = slotDateFromClick(dayColumn, event.clientY);
+                const preview = dayColumn.querySelector('[data-agenda-slot-preview]');
+                document.querySelectorAll('[data-agenda-slot-preview]').forEach((item) => {
+                    if (item !== preview) {
+                        item.classList.add('hidden');
+                    }
+                });
+
+                if (preview) {
+                    preview.style.top = `${slotIndex * slotHeight}px`;
+                    preview.style.height = `${Math.max(slotHeight, nativeDragState.appointment.getBoundingClientRect().height)}px`;
+                    preview.classList.remove('hidden');
+                }
+            });
+
+            document.addEventListener('drop', (event) => {
+                if (!nativeDragState) {
+                    return;
+                }
+
+                const dayColumn = event.target.closest('[data-agenda-day]');
+
+                if (!dayColumn) {
+                    finishNativeDrag();
+                    return;
+                }
+
+                event.preventDefault();
+                nativeDragRecentlyFinished = true;
+                window.setTimeout(() => {
+                    nativeDragRecentlyFinished = false;
+                }, 300);
+
+                const duration = minutesBetween(nativeDragState.start, nativeDragState.end);
+                const { start } = slotDateFromClick(dayColumn, event.clientY);
+                const end = new Date(start);
+                const appointmentId = nativeDragState.appointmentId;
+                end.setMinutes(end.getMinutes() + duration);
+                finishNativeDrag();
+                moveAppointment(appointmentId, start, end);
+            });
+
+            document.addEventListener('dragend', finishNativeDrag);
+
             document.addEventListener('click', (event) => {
                 const opener = event.target.closest('[data-appointment-modal]');
-                const closer = event.target.closest('[data-close-appointment-modal]');
+                const dayColumn = event.target.closest('[data-agenda-day]');
+                const closer = event.target.closest('[data-close-appointment-modal], [data-close-agenda-modal], [data-close-patient-match-modal]');
+                const patientResult = event.target.closest('[data-patient-result-id]');
+
+                if (patientResult) {
+                    const modal = document.getElementById('new-appointment-modal');
+                    const input = modal?.querySelector('#new_title');
+                    const patientId = modal?.querySelector('#new_patient_id');
+                    const results = modal?.querySelector('[data-patient-results]');
+                    const patient = agendaPatients.find((item) => String(item.id) === String(patientResult.dataset.patientResultId));
+
+                    if (input) {
+                        input.value = patient?.name || '';
+                    }
+
+                    if (patientId) {
+                        patientId.value = patientResult.dataset.patientResultId || '';
+                    }
+
+                    if (results) {
+                        results.classList.add('hidden');
+                    }
+
+                    return;
+                }
 
                 if (opener) {
-                    const modal = document.getElementById(opener.dataset.appointmentModal);
-                    if (modal) {
-                        modal.classList.remove('hidden');
-                        modal.classList.add('flex');
-                        modal.setAttribute('aria-hidden', 'false');
-                        document.body.classList.add('overflow-hidden');
+                    if (nativeDragRecentlyFinished) {
+                        event.preventDefault();
+                        return;
                     }
+
+                    const modal = document.getElementById(opener.dataset.appointmentModal);
+                    openAgendaModal(modal);
                     return;
                 }
 
                 if (closer) {
-                    const modal = closer.closest('[id^="appointment-modal-"]');
-                    if (modal) {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                        modal.setAttribute('aria-hidden', 'true');
-                        document.body.classList.remove('overflow-hidden');
-                    }
+                    closeAgendaModal(closer.closest('[id^="appointment-modal-"], #new-appointment-modal, #patient-match-modal'));
                     return;
                 }
 
-                if (event.target.matches('[id^="appointment-modal-"]')) {
-                    event.target.classList.add('hidden');
-                    event.target.classList.remove('flex');
-                    event.target.setAttribute('aria-hidden', 'true');
-                    document.body.classList.remove('overflow-hidden');
+                if (event.target.matches('[id^="appointment-modal-"], #new-appointment-modal, #patient-match-modal')) {
+                    closeAgendaModal(event.target);
+                    return;
+                }
+
+                if (dayColumn && !nativeDragRecentlyFinished) {
+                    const { start, end } = slotDateFromClick(dayColumn, event.clientY);
+                    fillNewAppointmentModal(start, end);
+                }
+            });
+
+            document.addEventListener('mousemove', (event) => {
+                const dayColumn = event.target.closest('[data-agenda-day]');
+                document.querySelectorAll('[data-agenda-slot-preview]').forEach((preview) => preview.classList.add('hidden'));
+
+                if (!dayColumn || event.target.closest('[data-appointment-modal]')) {
+                    return;
+                }
+
+                const { slotIndex, slotHeight } = slotDateFromClick(dayColumn, event.clientY);
+                const preview = dayColumn.querySelector('[data-agenda-slot-preview]');
+
+                if (preview) {
+                    preview.style.top = `${slotIndex * slotHeight}px`;
+                    preview.classList.remove('hidden');
+                }
+            });
+
+            document.addEventListener('input', (event) => {
+                const patientSearch = event.target.closest('[data-patient-search]');
+
+                if (patientSearch) {
+                    renderPatientResults(patientSearch);
+                }
+            });
+
+            document.addEventListener('focusin', (event) => {
+                const patientSearch = event.target.closest('[data-patient-search]');
+
+                if (patientSearch) {
+                    renderPatientResults(patientSearch);
                 }
             });
 
@@ -270,12 +577,15 @@
                     return;
                 }
 
-                document.querySelectorAll('[id^="appointment-modal-"].flex').forEach((modal) => {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                    modal.setAttribute('aria-hidden', 'true');
-                    document.body.classList.remove('overflow-hidden');
-                });
+                document.querySelectorAll('[id^="appointment-modal-"].flex, #new-appointment-modal.flex, #patient-match-modal.flex').forEach(closeAgendaModal);
+            });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const patientMatchModal = document.getElementById('patient-match-modal');
+
+                if (patientMatchModal) {
+                    openAgendaModal(patientMatchModal);
+                }
             });
         </script>
     @endpush

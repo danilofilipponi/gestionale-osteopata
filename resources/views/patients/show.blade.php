@@ -90,7 +90,7 @@
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-3">
-                        @if ($patient->privacyConsent?->privacy_policy_accepted && $patient->privacyConsent?->health_data_processing_accepted)
+                        @if (filled($patient->privacyConsent?->signature_data))
                             <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">Privacy firmata</span>
                         @else
                             <span class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700">Privacy non firmata</span>

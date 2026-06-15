@@ -30,23 +30,35 @@ const calculateFiscalCode = ({ firstName, lastName, birthDate, gender, birthPlac
     return `${partial}${String.fromCharCode(65 + checksum)}`;
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
+let cityModulePromise = null;
+
+const loadCityModule = async () => {
+    cityModulePromise ||= import('./italian-cities');
+
+    return cityModulePromise;
+};
+
+document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('[data-patient-form]');
     if (!form) return;
-
-    const { findCity, italianCities } = await import('./italian-cities');
 
     const field = (name) => form.querySelector(`[name="${name}"]`);
     const cityList = document.getElementById('italian-cities');
 
-    if (cityList && cityList.children.length === 0) {
+    const fillCityList = async () => {
+        if (!cityList || cityList.children.length > 0) {
+            return;
+        }
+
+        const { italianCities } = await loadCityModule();
+
         italianCities.forEach((city) => {
             const option = document.createElement('option');
             option.value = city.name;
             option.label = `${city.name} (${city.province})`;
             cityList.appendChild(option);
         });
-    }
+    };
 
     const fallback = {
         'preview-first-name': 'Nome',
@@ -93,7 +105,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         ageTarget.textContent = Number.isFinite(age) && age >= 0 ? `${age} anni` : 'n.d.';
     };
 
-    const syncResidence = () => {
+    const syncResidence = async () => {
+        const { findCity } = await loadCityModule();
         const city = findCity(field('city')?.value || '');
         if (!city) return;
 
@@ -103,10 +116,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (postalCode) postalCode.value = city.zip || city.caps?.[0] || '';
     };
 
-    const syncFiscalCode = () => {
+    const syncFiscalCode = async () => {
         const fiscalCode = field('fiscal_code');
         if (!fiscalCode) return;
 
+        const { findCity } = await loadCityModule();
         const code = calculateFiscalCode({
             lastName: field('last_name')?.value || '',
             firstName: field('first_name')?.value || '',
@@ -129,6 +143,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     field('birth_date')?.addEventListener('change', syncAge);
     field('birth_date')?.addEventListener('input', syncAge);
+    field('birth_place')?.addEventListener('focus', fillCityList, { once: true });
+    field('city')?.addEventListener('focus', fillCityList, { once: true });
     field('city')?.addEventListener('change', syncResidence);
     field('city')?.addEventListener('blur', syncResidence);
 
@@ -142,6 +158,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     syncAge();
-    syncFiscalCode();
-    syncResidence();
 });

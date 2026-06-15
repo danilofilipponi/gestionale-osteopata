@@ -8,7 +8,7 @@ use App\Models\Setting;
 use App\Support\GoogleCalendarClient;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 class AppointmentController extends Controller
@@ -34,6 +34,19 @@ class AppointmentController extends Controller
             ->whereBetween('starts_at', [$calendarStart, $calendarEnd])
             ->oldest('starts_at')
             ->get();
+        $patientMatchStart = now()->subDays(7)->startOfDay();
+        $patientMatchEnd = now()->addDays(7)->endOfDay();
+        $pendingPatientMatches = Appointment::whereNull('patient_id')
+            ->where('patient_match_status', 'pending')
+            ->whereNotNull('google_event_id')
+            ->whereBetween('starts_at', [$patientMatchStart, $patientMatchEnd])
+            ->oldest('starts_at')
+            ->limit(12)
+            ->get()
+            ->map(fn (Appointment $appointment) => [
+                'appointment' => $appointment,
+                'suggestions' => $this->patientSuggestions($appointment->title),
+            ]);
 
         return view('appointments.index', [
             'appointments' => $appointments,
@@ -50,14 +63,14 @@ class AppointmentController extends Controller
             'categories' => $categories,
             'appointmentsByDate' => $appointments->groupBy(fn (Appointment $appointment) => $appointment->starts_at->toDateString()),
             'statusLabels' => $this->statusLabels(),
+            'pendingPatientMatches' => $pendingPatientMatches,
         ]);
     }
 
     public function store(Request $request)
     {
         $data = $this->validatedAppointment($request);
-        $data['color'] = $data['color'] ?: $this->categoryColor($data['type']);
-        $this->preventOverlap($data['starts_at'], $data['ends_at']);
+        $data['color'] = ($data['color'] ?? null) ?: $this->categoryColor($data['type']);
 
         $appointment = Appointment::create($data);
         $this->syncWithGoogle($appointment);
@@ -68,13 +81,28 @@ class AppointmentController extends Controller
     public function update(Request $request, Appointment $appointment)
     {
         $data = $this->validatedAppointment($request);
-        $data['color'] = $data['color'] ?: $this->categoryColor($data['type']);
-        $this->preventOverlap($data['starts_at'], $data['ends_at'], $appointment);
+        $data['color'] = ($data['color'] ?? null) ?: $this->categoryColor($data['type']);
 
         $appointment->update($data);
         $this->syncWithGoogle($appointment);
 
         return back()->with('status', 'Appuntamento aggiornato.');
+    }
+
+    public function move(Request $request, Appointment $appointment)
+    {
+        $data = $request->validate([
+            'starts_at' => ['required', 'date'],
+            'ends_at' => ['required', 'date', 'after:starts_at'],
+        ]);
+
+        $appointment->update($data);
+        $this->syncWithGoogle($appointment);
+
+        return response()->json([
+            'status' => 'ok',
+            'message' => 'Appuntamento spostato.',
+        ]);
     }
 
     public function destroy(Appointment $appointment)
@@ -83,6 +111,48 @@ class AppointmentController extends Controller
         $appointment->delete();
 
         return back()->with('status', 'Appuntamento eliminato.');
+    }
+
+    public function resolvePatient(Request $request, Appointment $appointment)
+    {
+        $data = $request->validate([
+            'patient_id' => ['required', 'exists:patients,id'],
+        ]);
+
+        $appointment->update([
+            'patient_id' => $data['patient_id'],
+            'patient_match_status' => 'matched',
+            'title' => Patient::find($data['patient_id'])->list_name,
+        ]);
+        $this->syncWithGoogle($appointment);
+
+        return back()->with('status', 'Appuntamento abbinato al paziente.');
+    }
+
+    public function ignorePatientMatch(Appointment $appointment)
+    {
+        $appointment->update([
+            'patient_match_status' => 'ignored',
+        ]);
+
+        return back()->with('status', 'Appuntamento lasciato senza abbinamento paziente.');
+    }
+
+    public function createPatientFromMatch(Appointment $appointment)
+    {
+        $appointment->update([
+            'patient_match_status' => 'ignored',
+        ]);
+
+        $nameParts = preg_split('/\s+/', trim($appointment->title), 2) ?: [];
+
+        return redirect()
+            ->route('patients.create', [
+                'last_name' => $nameParts[0] ?? '',
+                'first_name' => $nameParts[1] ?? '',
+                'appointment_id' => $appointment->id,
+            ])
+            ->with('status', 'Ricerca paziente disattivata per questo appuntamento. Puoi creare una nuova scheda paziente.');
     }
 
     private function validatedAppointment(Request $request): array
@@ -97,28 +167,6 @@ class AppointmentController extends Controller
             'color' => ['nullable', 'string', 'max:20'],
             'notes' => ['nullable', 'string'],
         ]);
-    }
-
-    private function preventOverlap(string $startsAt, string $endsAt, ?Appointment $current = null): void
-    {
-        $overlap = Appointment::query()
-            ->when($current, fn ($query) => $query->whereKeyNot($current->id))
-            ->where('status', '!=', 'cancelled')
-            ->where('starts_at', '<', $endsAt)
-            ->where('ends_at', '>', $startsAt)
-            ->oldest('starts_at')
-            ->first();
-
-        if ($overlap) {
-            throw ValidationException::withMessages([
-                'starts_at' => sprintf(
-                    'Esiste gia un appuntamento nello stesso orario: %s, dalle %s alle %s.',
-                    $overlap->title,
-                    $overlap->starts_at->format('H:i'),
-                    $overlap->ends_at->format('H:i')
-                ),
-            ]);
-        }
     }
 
     private function settings(): array
@@ -151,9 +199,16 @@ class AppointmentController extends Controller
 
     private function categoryColor(string $type): string
     {
+        $calendarId = GoogleCalendarClient::calendarIdForType($type);
+        $calendar = collect(GoogleCalendarClient::storedCalendarList())->firstWhere('id', $calendarId);
+
+        if (! empty($calendar['backgroundColor'])) {
+            return $calendar['backgroundColor'];
+        }
+
         $category = collect($this->categories())->firstWhere('key', $type);
 
-        return $category['color'] ?? '#5f948a';
+        return in_array($type, ['visit', 'visita'], true) ? '#039be5' : ($category['color'] ?? '#039be5');
     }
 
     private function timeSlots(string $start, string $end, int $minutes): array
@@ -179,6 +234,45 @@ class AppointmentController extends Controller
             'cancelled' => 'Annullato',
             'no_show' => 'Non presentato',
         ];
+    }
+
+    private function patientSuggestions(string $title)
+    {
+        $titleNormalized = $this->normalizePatientText($title);
+
+        return Patient::where('user_id', Auth::id())
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get()
+            ->map(function (Patient $patient) use ($titleNormalized) {
+                $fullName = $this->normalizePatientText($patient->list_name);
+                $lastName = $this->normalizePatientText($patient->last_name);
+                $firstName = $this->normalizePatientText($patient->first_name);
+                $score = 0;
+
+                if ($fullName && str_contains($titleNormalized, $fullName)) {
+                    $score = 100;
+                } elseif ($lastName && str_contains($titleNormalized, $lastName)) {
+                    $score = $firstName && str_contains($titleNormalized, $firstName) ? 95 : 80;
+                } elseif ($firstName && str_contains($titleNormalized, $firstName)) {
+                    $score = 55;
+                }
+
+                return ['patient' => $patient, 'score' => $score];
+            })
+            ->filter(fn (array $suggestion) => $suggestion['score'] >= 55)
+            ->sortByDesc('score')
+            ->take(5)
+            ->values();
+    }
+
+    private function normalizePatientText(?string $value): string
+    {
+        $value = strtolower((string) $value);
+        $value = preg_replace('/[^\pL\pN\s]+/u', ' ', $value) ?? '';
+        $value = preg_replace('/\b(eur|euro|x\d+|\d+)\b/u', ' ', $value) ?? '';
+
+        return trim(preg_replace('/\s+/', ' ', $value) ?? '');
     }
 
     private function syncWithGoogle(Appointment $appointment): void

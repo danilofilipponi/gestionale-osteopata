@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\Patient;
 use App\Models\Setting;
 use App\Support\GoogleCalendarClient;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 class GoogleCalendarController extends Controller
@@ -58,21 +60,26 @@ class GoogleCalendarController extends Controller
 
         return redirect()
             ->route('settings.agenda')
-            ->with('status', "Sincronizzazione {$year} completata: {$result['exported']} inviati a Google, {$result['imported']} importati, {$result['updated']} aggiornati, {$result['skipped']} gia presenti, {$result['failed']} non sincronizzati.");
+            ->with('status', "Sincronizzazione {$year} completata: {$result['exported']} inviati a Google, {$result['imported']} importati, {$result['updated']} aggiornati, {$result['deleted']} eliminati, {$result['skipped']} gia presenti, {$result['failed']} non sincronizzati.");
     }
 
     public function autoSync()
     {
-        $lastSync = Setting::getValue('google_calendar_auto_synced_at');
+        try {
+            $result = $this->syncCurrentYear(false);
 
-        if ($lastSync && now()->diffInMinutes(Carbon::parse($lastSync)) < 30) {
+            return response()->json(['status' => 'ok'] + $result);
+        } catch (Throwable) {
             return response()->json(['status' => 'skipped']);
         }
+    }
 
-        $result = $this->syncYear(now()->year, false);
+    public function syncCurrentYear(bool $pushLocalAppointments = false): array
+    {
+        $result = $this->syncYear(now()->year, $pushLocalAppointments);
         Setting::setValue('google_calendar_auto_synced_at', now()->toDateTimeString(), 'agenda');
 
-        return response()->json(['status' => 'ok'] + $result);
+        return $result;
     }
 
     private function syncYear(int $year, bool $pushLocalAppointments): array
@@ -89,6 +96,7 @@ class GoogleCalendarController extends Controller
         $imported = 0;
         $updated = 0;
         $skipped = 0;
+        $deleted = 0;
         $failed = 0;
 
         if ($pushLocalAppointments && in_array(GoogleCalendarClient::syncMode(), ['write', 'two_way'], true)) {
@@ -111,21 +119,33 @@ class GoogleCalendarController extends Controller
         }
 
         if (in_array(GoogleCalendarClient::syncMode(), ['read', 'two_way'], true)) {
-            foreach (GoogleCalendarClient::selectedCalendarIds() as $calendarId) {
+            $selectedCalendarIds = GoogleCalendarClient::selectedCalendarIds();
+
+            foreach ($selectedCalendarIds as $calendarId) {
                 try {
-                    foreach (GoogleCalendarClient::events($from, $to, $calendarId) as $event) {
+                    $events = GoogleCalendarClient::events($from, $to, $calendarId);
+                    $googleEventIds = collect($events)
+                        ->filter(fn (array $event) => ($event['status'] ?? null) !== 'cancelled')
+                        ->pluck('id')
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    foreach ($events as $event) {
                         $result = $this->importEvent($event, $calendarId);
                         $imported += (int) ($result === 'created');
                         $updated += (int) ($result === 'updated');
                         $skipped += (int) ($result === 'unchanged');
                     }
+
+                    $deleted += $this->deleteMissingGoogleEvents($from, $to, $calendarId, $googleEventIds, count($selectedCalendarIds) === 1);
                 } catch (Throwable) {
                     $failed++;
                 }
             }
         }
 
-        return compact('exported', 'imported', 'updated', 'skipped', 'failed');
+        return compact('exported', 'imported', 'updated', 'skipped', 'deleted', 'failed');
     }
 
     public function refreshCalendars()
@@ -156,8 +176,13 @@ class GoogleCalendarController extends Controller
         }
 
         $category = $this->categoryForCalendar($calendarId);
+        $patientMatch = ($category['sync_patients'] ?? false) && $this->shouldCheckPatientMatch($startsAt)
+            ? $this->matchPatient((string) ($event['summary'] ?? ''))
+            : ['patient' => null, 'status' => null];
+
         $payload = [
-            'patient_id' => null,
+            'patient_id' => $patientMatch['patient']?->id,
+            'patient_match_status' => $patientMatch['status'],
             'title' => $event['summary'] ?? 'Evento Google Calendar',
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
@@ -175,6 +200,16 @@ class GoogleCalendarController extends Controller
                 return 'unchanged';
             }
 
+            if ($appointment->patient_id) {
+                $payload['patient_id'] = $appointment->patient_id;
+                $payload['patient_match_status'] = 'matched';
+            }
+
+            if ($appointment->patient_match_status === 'ignored') {
+                $payload['patient_id'] = null;
+                $payload['patient_match_status'] = 'ignored';
+            }
+
             if ($this->appointmentAlreadyMatches($appointment, $payload)) {
                 return 'unchanged';
             }
@@ -187,6 +222,33 @@ class GoogleCalendarController extends Controller
         Appointment::create($payload);
 
         return 'created';
+    }
+
+    private function deleteMissingGoogleEvents(Carbon $from, Carbon $to, string $calendarId, array $googleEventIds, bool $includeLegacyWithoutCalendar): int
+    {
+        $query = Appointment::query()
+            ->whereBetween('starts_at', [$from, $to])
+            ->whereNotNull('google_event_id')
+            ->where(function ($query) use ($calendarId, $includeLegacyWithoutCalendar) {
+                $query->where('google_calendar_id', $calendarId);
+
+                if ($includeLegacyWithoutCalendar) {
+                    $query->orWhereNull('google_calendar_id');
+                }
+            });
+
+        if ($googleEventIds !== []) {
+            $query->whereNotIn('google_event_id', $googleEventIds);
+        }
+
+        $appointments = $query->get();
+        $deleted = $appointments->count();
+
+        foreach ($appointments as $appointment) {
+            $appointment->delete();
+        }
+
+        return $deleted;
     }
 
     private function findExistingAppointment(array $payload, string $googleEventId, string $calendarId): ?Appointment
@@ -252,19 +314,73 @@ class GoogleCalendarController extends Controller
     {
         $categories = json_decode(Setting::getValue('agenda_categories', '[]'), true) ?: [];
         $category = collect($categories)->firstWhere('google_calendar_id', $calendarId);
+        $calendars = collect(GoogleCalendarClient::storedCalendarList())->keyBy('id');
+        $calendarColor = $calendars->get($calendarId)['backgroundColor'] ?? null;
 
         if ($category) {
             return [
                 'key' => $category['key'] ?? 'personal',
-                'color' => $category['color'] ?? '#64748b',
+                'color' => $calendarColor ?? ($category['color'] ?? '#64748b'),
+                'sync_patients' => (bool) ($category['sync_patients'] ?? false),
             ];
         }
 
-        $calendars = collect(GoogleCalendarClient::storedCalendarList())->keyBy('id');
-
         return [
             'key' => 'personal',
-            'color' => $calendars->get($calendarId)['backgroundColor'] ?? '#64748b',
+            'color' => $calendarColor ?? '#64748b',
+            'sync_patients' => false,
         ];
+    }
+
+    private function matchPatient(string $title): array
+    {
+        $titleNormalized = $this->normalizePatientText($title);
+
+        if ($titleNormalized === '') {
+            return ['patient' => null, 'status' => 'pending'];
+        }
+
+        $patients = Patient::where('user_id', Auth::id())->orderBy('last_name')->orderBy('first_name')->get();
+        $matches = $patients
+            ->map(function (Patient $patient) use ($titleNormalized) {
+                $fullName = $this->normalizePatientText($patient->list_name);
+                $lastName = $this->normalizePatientText($patient->last_name);
+                $firstName = $this->normalizePatientText($patient->first_name);
+                $score = 0;
+
+                if ($fullName && str_contains($titleNormalized, $fullName)) {
+                    $score = 100;
+                } elseif ($lastName && preg_match('/\b'.preg_quote($lastName, '/').'\b/u', $titleNormalized)) {
+                    $score = $firstName && str_contains($titleNormalized, $firstName) ? 95 : 80;
+                }
+
+                return ['patient' => $patient, 'score' => $score];
+            })
+            ->filter(fn (array $match) => $match['score'] >= 80)
+            ->sortByDesc('score')
+            ->values();
+
+        if ($matches->count() === 1 && $matches->first()['score'] >= 80) {
+            return ['patient' => $matches->first()['patient'], 'status' => 'matched'];
+        }
+
+        return ['patient' => null, 'status' => 'pending'];
+    }
+
+    private function shouldCheckPatientMatch(Carbon $startsAt): bool
+    {
+        return $startsAt->between(
+            now()->subDays(7)->startOfDay(),
+            now()->addDays(7)->endOfDay()
+        );
+    }
+
+    private function normalizePatientText(?string $value): string
+    {
+        $value = strtolower((string) $value);
+        $value = preg_replace('/[^\pL\pN\s]+/u', ' ', $value) ?? '';
+        $value = preg_replace('/\b(eur|euro|x\d+|\d+)\b/u', ' ', $value) ?? '';
+
+        return trim(preg_replace('/\s+/', ' ', $value) ?? '');
     }
 }

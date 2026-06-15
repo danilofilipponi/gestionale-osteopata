@@ -494,13 +494,13 @@
                             <p class="mt-1 text-sm text-gray-500">Le categorie attive compaiono nella tendina della pagina agenda e ne determinano il colore.</p>
 
                             <div class="mt-5 overflow-x-auto">
-                                <table class="w-full min-w-[720px] text-left text-sm">
+                                <table class="w-full min-w-[760px] text-left text-sm">
                                     <thead>
                                         <tr class="border-b border-line text-xs uppercase text-muted">
-                                            <th class="pb-3">Codice</th>
                                             <th class="pb-3">Categoria</th>
                                             <th class="pb-3">Colore</th>
                                             <th class="pb-3">Calendario Google</th>
+                                            <th class="pb-3">Sincronizza pazienti</th>
                                             <th class="pb-3">Anteprima</th>
                                         </tr>
                                     </thead>
@@ -508,21 +508,20 @@
                                         @for ($index = 0; $index < 8; $index++)
                                             @php
                                                 $category = old("categories.$index", $agendaCategories[$index] ?? []);
-                                                $color = $category['color'] ?? '#5f948a';
                                                 $categoryGoogleCalendarId = $category['google_calendar_id'] ?? '';
+                                                $googleCalendarColor = collect($googleCalendars)->firstWhere('id', $categoryGoogleCalendarId)['backgroundColor'] ?? null;
+                                                $color = $googleCalendarColor ?? ($category['color'] ?? '#5f948a');
                                             @endphp
                                             <tr>
                                                 <td class="py-3 pr-3">
-                                                    <input name="categories[{{ $index }}][key]" class="app-field w-40" value="{{ $category['key'] ?? '' }}" placeholder="visit">
-                                                </td>
-                                                <td class="py-3 pr-3">
+                                                    <input type="hidden" name="categories[{{ $index }}][key]" value="{{ $category['key'] ?? '' }}">
                                                     <input name="categories[{{ $index }}][label]" class="app-field w-full min-w-80" value="{{ $category['label'] ?? '' }}" placeholder="Visita osteopatica">
                                                 </td>
                                                 <td class="py-3 pr-3">
-                                                    <input name="categories[{{ $index }}][color]" type="color" class="h-12 w-20 rounded-xl border border-line bg-white p-1" value="{{ $color }}">
+                                                    <input name="categories[{{ $index }}][color]" type="color" class="h-12 w-20 rounded-xl border border-line bg-white p-1" value="{{ $color }}" data-agenda-category-color="{{ $index }}">
                                                 </td>
                                                 <td class="py-3 pr-3">
-                                                    <select name="categories[{{ $index }}][google_calendar_id]" class="app-field min-w-64">
+                                                    <select name="categories[{{ $index }}][google_calendar_id]" class="app-field min-w-64" data-agenda-category-calendar="{{ $index }}">
                                                         <option value="">Calendario principale / default</option>
                                                         @foreach ($googleCalendars as $googleCalendar)
                                                             <option value="{{ $googleCalendar['id'] ?? '' }}" @selected($categoryGoogleCalendarId === ($googleCalendar['id'] ?? ''))>
@@ -532,7 +531,12 @@
                                                     </select>
                                                 </td>
                                                 <td class="py-3 pr-3">
-                                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold text-white" style="background-color: {{ $color }};">{{ $category['label'] ?? 'Categoria' }}</span>
+                                                    <label class="inline-flex items-center justify-center rounded-xl border border-line bg-white px-4 py-3">
+                                                        <input type="checkbox" name="categories[{{ $index }}][sync_patients]" value="1" @checked((bool) ($category['sync_patients'] ?? false)) class="rounded border-gray-300 text-sage focus:ring-sage">
+                                                    </label>
+                                                </td>
+                                                <td class="py-3 pr-3">
+                                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold text-white" style="background-color: {{ $color }};" data-agenda-category-preview="{{ $index }}">{{ $category['label'] ?? 'Categoria' }}</span>
                                                 </td>
                                             </tr>
                                         @endfor
@@ -748,4 +752,31 @@
             </div>
         </div>
     </div>
+    <script>
+        (() => {
+            const calendarColors = @json(collect($googleCalendars)->mapWithKeys(fn ($calendar) => [$calendar['id'] ?? '' => $calendar['backgroundColor'] ?? '#64748b'])->filter(fn ($color, $id) => filled($id)));
+
+            document.querySelectorAll('[data-agenda-category-calendar]').forEach((select) => {
+                select.addEventListener('change', () => {
+                    const index = select.dataset.agendaCategoryCalendar;
+                    const color = calendarColors[select.value];
+
+                    if (!color) {
+                        return;
+                    }
+
+                    const colorInput = document.querySelector(`[data-agenda-category-color="${index}"]`);
+                    const preview = document.querySelector(`[data-agenda-category-preview="${index}"]`);
+
+                    if (colorInput) {
+                        colorInput.value = color;
+                    }
+
+                    if (preview) {
+                        preview.style.backgroundColor = color;
+                    }
+                });
+            });
+        })();
+    </script>
 </x-app-layout>

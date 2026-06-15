@@ -31,30 +31,6 @@
             </main>
         </div>
         @stack('modals')
-        <script>
-            window.addEventListener('load', () => {
-                const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
-
-                if (!csrf || sessionStorage.getItem('google-calendar-auto-sync-running') === '1') {
-                    return;
-                }
-
-                sessionStorage.setItem('google-calendar-auto-sync-running', '1');
-
-                fetch('{{ route('google.calendar.auto-sync') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrf,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({}),
-                    keepalive: true,
-                }).catch(() => {}).finally(() => {
-                    sessionStorage.removeItem('google-calendar-auto-sync-running');
-                });
-            });
-        </script>
         @stack('scripts')
     </body>
 </html>

@@ -120,19 +120,34 @@ class InvoiceDefaults
 
         $quantity = max((float) ($invoice->quantity ?: 1), 1);
         $parsed = self::parseTechnicalDescription((string) $invoice->description);
-        $line = (float) ($invoice->line_amount ?? $parsed['line'] ?? $invoice->amount);
-        $unit = $line / $quantity;
+        $storedTotal = (float) $invoice->amount;
+        $line = (float) ($invoice->line_amount ?? $parsed['line'] ?? $storedTotal);
         $socialSecurityRate = (float) ($service['social_security_rate'] ?? $settings['invoice_social_security_rate']);
         $vatRate = (float) ($service['vat_rate'] ?? 0);
-        $socialSecurity = $parsed['social_security'] ?? ($line * $socialSecurityRate / 100);
-        $taxable = $line + $socialSecurity;
-        $vat = $taxable * $vatRate / 100;
-        $stamp = $parsed['stamp'] ?? ((bool) ($service['stamp_duty'] ?? false) && $taxable > (float) $settings['invoice_stamp_threshold']
-            ? (float) $settings['invoice_stamp_amount']
-            : 0.0);
         $hasSeparateLine = $invoice->line_amount !== null || array_key_exists('line', $parsed);
-        $calculatedTotal = $line + $socialSecurity + $vat + $stamp;
-        $total = $hasSeparateLine ? $calculatedTotal : (float) $invoice->amount;
+        $alreadyGrossTotal = $hasSeparateLine && $storedTotal > 0 && $line >= $storedTotal;
+
+        if ($alreadyGrossTotal) {
+            $stamp = $parsed['stamp'] ?? 0.0;
+            $grossWithoutStamp = max($storedTotal - $stamp, 0);
+            $socialSecurity = $parsed['social_security'] ?? ($socialSecurityRate > 0
+                ? round($grossWithoutStamp - ($grossWithoutStamp / (1 + ($socialSecurityRate / 100))), 2)
+                : 0.0);
+            $line = max(round($grossWithoutStamp - $socialSecurity, 2), 0);
+            $taxable = $line + $socialSecurity;
+            $vat = 0.0;
+            $total = $storedTotal;
+        } else {
+            $socialSecurity = $parsed['social_security'] ?? ($line * $socialSecurityRate / 100);
+            $taxable = $line + $socialSecurity;
+            $vat = $taxable * $vatRate / 100;
+            $stamp = $parsed['stamp'] ?? ((bool) ($service['stamp_duty'] ?? false) && $taxable > (float) $settings['invoice_stamp_threshold']
+                ? (float) $settings['invoice_stamp_amount']
+                : 0.0);
+            $calculatedTotal = $line + $socialSecurity + $vat + $stamp;
+            $total = $hasSeparateLine ? $calculatedTotal : $storedTotal;
+        }
+        $unit = $line / $quantity;
 
         return [
             'line' => $line,

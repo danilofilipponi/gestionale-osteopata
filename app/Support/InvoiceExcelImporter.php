@@ -26,26 +26,30 @@ class InvoiceExcelImporter
 
         foreach ($rows as $row) {
             $patientId = self::valueAny($row, $indexes, ['Idpaziente', 'ID paziente', 'Codice cliente']);
-            $number = self::valueAny($row, $indexes, ['N Fattura', 'Numero fattura', 'Numero']);
-            $issuedAt = self::dateValue(self::valueAny($row, $indexes, ['Data di emissione', 'Data', 'Data fattura']));
-            $paymentDate = self::dateValue(self::valueAny($row, $indexes, ['Data pagamento', 'Data di pagamento', 'Data scadenza pagamento']));
+            $number = self::normalizeNumber(self::valueAny($row, $indexes, ['N Fattura', 'Numero fattura', 'Numero']));
+            $issuedAt = self::dateValue(self::valueAny($row, $indexes, ['Data documento', 'Data di emissione', 'Data', 'Data fattura']));
+            $paymentDate = self::dateValue(self::valueAny($row, $indexes, ['Data incasso', 'Data pagamento', 'Data di pagamento', 'Data scadenza pagamento']));
 
             if (blank($patientId) && blank($number) && blank($issuedAt)) {
                 $skipped++;
                 continue;
             }
 
-            $patient = self::findPatient($patientId);
+            $patient = self::findPatient(
+                $patientId,
+                self::valueAny($row, $indexes, ['Codice Fiscale', 'CF']),
+                self::valueAny($row, $indexes, ['Cliente', 'Paziente'])
+            );
 
             if (! $patient || ! $issuedAt) {
                 $unmatched++;
                 continue;
             }
 
-            $amount = self::amountValue(self::valueAny($row, $indexes, ['Totale']))
+            $amount = self::amountValue(self::valueAny($row, $indexes, ['Totale documento', 'Totale', 'Netto a pagare']))
                 ?? self::calculatedTotal($row, $indexes)
                 ?? 0;
-            $lineAmount = self::amountValue(self::valueAny($row, $indexes, ['Importo']));
+            $lineAmount = self::amountValue(self::valueAny($row, $indexes, ['Importo', 'Totale non soggetto IVA (N2)', 'Totale imponibile']));
 
             $year = (int) date('Y', strtotime($issuedAt));
             $progressive = self::progressiveFromNumber($number);
@@ -55,12 +59,15 @@ class InvoiceExcelImporter
                 'year' => self::yearFromNumber($number) ?: $year,
                 'progressive_number' => $progressive,
                 'issued_at' => $issuedAt,
-                'service' => self::valueAny($row, $indexes, ['Descrizione', 'Prestazione', 'Servizio']),
+                'service' => self::valueAny($row, $indexes, ['Descrizione', 'Prestazione', 'Servizio']) ?: 'Seduta di manipolazione osteopatica',
                 'line_amount' => $lineAmount,
                 'amount' => $amount,
                 'payment_method' => self::valueAny($row, $indexes, ['Metodo pagamento', 'Metodo di pagamento']),
                 'payment_date' => $paymentDate ?: $issuedAt,
-                'status' => self::statusValue(self::valueAny($row, $indexes, ['Stato'])),
+                'status' => self::statusValue(
+                    self::valueAny($row, $indexes, ['Incassi'])
+                    ?: self::valueAny($row, $indexes, ['Stato'])
+                ),
                 'description' => self::description($row, $indexes),
             ];
 
@@ -80,18 +87,54 @@ class InvoiceExcelImporter
         return compact('created', 'updated', 'skipped', 'unmatched');
     }
 
-    private static function findPatient(string $patientId): ?Patient
+    private static function findPatient(string $patientId, string $fiscalCode = '', string $customerName = ''): ?Patient
     {
-        if (blank($patientId) || ! is_numeric($patientId)) {
+        if (filled($patientId) && is_numeric($patientId)) {
+            $legacyId = (int) $patientId;
+
+            $patient = Patient::where('user_id', Auth::id())
+                ->where('legacy_patient_id', $legacyId)
+                ->first()
+                ?? self::findPatientByInternalIdOnlyWhenNoLegacyArchiveExists($legacyId);
+
+            if ($patient) {
+                return $patient;
+            }
+        }
+
+        if (filled($fiscalCode)) {
+            $patient = Patient::where('user_id', Auth::id())
+                ->where('fiscal_code', strtoupper(trim($fiscalCode)))
+                ->first();
+
+            if ($patient) {
+                return $patient;
+            }
+        }
+
+        return self::findPatientByName($customerName);
+    }
+
+    private static function findPatientByName(string $customerName): ?Patient
+    {
+        $normalizedName = self::normalizeName($customerName);
+
+        if (blank($normalizedName)) {
             return null;
         }
 
-        $legacyId = (int) $patientId;
+        $matches = Patient::where('user_id', Auth::id())
+            ->get()
+            ->filter(function (Patient $patient) use ($normalizedName) {
+                return in_array($normalizedName, [
+                    self::normalizeName($patient->list_name),
+                    self::normalizeName(trim($patient->first_name.' '.$patient->last_name)),
+                    self::normalizeName(trim($patient->last_name.' '.$patient->first_name)),
+                ], true);
+            })
+            ->values();
 
-        return Patient::where('user_id', Auth::id())
-            ->where('legacy_patient_id', $legacyId)
-            ->first()
-            ?? self::findPatientByInternalIdOnlyWhenNoLegacyArchiveExists($legacyId);
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     private static function findPatientByInternalIdOnlyWhenNoLegacyArchiveExists(int $patientId): ?Patient
@@ -123,6 +166,8 @@ class InvoiceExcelImporter
             'Importo' => ['Importo'],
             'Inps' => ['Inps', 'INPS', 'Cassa'],
             'Bollo' => ['Bollo'],
+            'File XML' => ['Nome file'],
+            'Stato invio' => ['Stato'],
         ] as $label => $headers) {
             $value = self::valueAny($row, $indexes, $headers);
             if (filled($value)) {
@@ -135,7 +180,7 @@ class InvoiceExcelImporter
 
     private static function calculatedTotal(array $row, array $indexes): ?float
     {
-        $amount = self::amountValue(self::valueAny($row, $indexes, ['Importo']));
+        $amount = self::amountValue(self::valueAny($row, $indexes, ['Importo', 'Totale non soggetto IVA (N2)', 'Totale imponibile']));
 
         if ($amount === null) {
             return null;
@@ -148,6 +193,10 @@ class InvoiceExcelImporter
 
     private static function rows(string $path): array
     {
+        if (self::isLegacyXls($path)) {
+            return LegacyXlsReader::rows($path);
+        }
+
         $zip = new ZipArchive();
         if ($zip->open($path) !== true) {
             throw new RuntimeException('File Excel fatture non leggibile.');
@@ -312,6 +361,10 @@ class InvoiceExcelImporter
 
     private static function yearFromNumber(string $number): ?int
     {
+        if (preg_match('/\/\s*(\d{2})\s*$/', $number, $matches)) {
+            return 2000 + (int) $matches[1];
+        }
+
         if (preg_match('/(\d{4})\s*$/', $number, $matches)) {
             return (int) $matches[1];
         }
@@ -322,11 +375,46 @@ class InvoiceExcelImporter
     private static function statusValue(string $value): string
     {
         return match (strtolower(trim($value))) {
+            'incassata', 'pagata', 'paid' => 'paid',
             'bozza', 'draft' => 'draft',
             'inviata', 'emessa', 'sent' => 'sent',
-            'annullata', 'cancelled' => 'cancelled',
+            'annullata', 'cancelled', 'scartata' => 'cancelled',
             default => 'paid',
         };
+    }
+
+    private static function normalizeNumber(string $number): string
+    {
+        $number = trim($number);
+
+        if (preg_match('/FPR\s*0*(\d+)\s*\/\s*(\d{2,4})/i', $number, $matches)) {
+            $year = strlen($matches[2]) === 2 ? '20'.$matches[2] : $matches[2];
+
+            return ((int) $matches[1]).'/'.$year;
+        }
+
+        return preg_replace('/^0+(\d+\/)/', '$1', $number) ?? $number;
+    }
+
+    private static function normalizeName(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('/[^\pL\pN\s]+/u', ' ', $value) ?? '';
+
+        return trim(preg_replace('/\s+/', ' ', $value) ?? '');
+    }
+
+    private static function isLegacyXls(string $path): bool
+    {
+        $handle = fopen($path, 'rb');
+        if (! $handle) {
+            return false;
+        }
+
+        $signature = fread($handle, 8);
+        fclose($handle);
+
+        return $signature === "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1";
     }
 
     private static function columnIndex(string $letters): int

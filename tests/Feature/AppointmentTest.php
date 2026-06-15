@@ -45,7 +45,7 @@ class AppointmentTest extends TestCase
         ]);
     }
 
-    public function test_overlapping_appointments_are_rejected(): void
+    public function test_overlapping_appointments_are_allowed(): void
     {
         $user = User::factory()->create();
 
@@ -65,6 +65,13 @@ class AppointmentTest extends TestCase
                 'type' => 'visit',
                 'status' => 'scheduled',
             ])
-            ->assertStatus(422);
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('appointments', [
+            'title' => 'Sovrapposto',
+            'starts_at' => '2026-06-06 09:30:00',
+            'ends_at' => '2026-06-06 10:30:00',
+        ]);
     }
 }

@@ -60,7 +60,11 @@ class Patient extends Model
 
     public function invoices(): HasMany
     {
-        return $this->hasMany(Invoice::class)->latest('issued_at');
+        return $this->hasMany(Invoice::class)
+            ->orderByDesc('year')
+            ->orderByDesc('progressive_number')
+            ->orderByDesc('issued_at')
+            ->orderByDesc('id');
     }
 
     public function privacyConsent(): HasOne

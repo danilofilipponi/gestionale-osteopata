@@ -22,6 +22,9 @@
 <div class="grid gap-6 xl:grid-cols-[1fr_320px]">
     <form method="POST" action="{{ $action }}" class="app-card p-6" data-patient-form>
         @csrf
+        @if (! empty($pendingAppointmentId))
+            <input type="hidden" name="appointment_id" value="{{ $pendingAppointmentId }}">
+        @endif
         @isset($method)
             @method($method)
         @endisset

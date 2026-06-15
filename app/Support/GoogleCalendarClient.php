@@ -93,9 +93,48 @@ class GoogleCalendarClient
             return;
         }
 
-        Http::timeout(20)->withToken(self::accessToken())
-            ->delete(self::CALENDAR_URL.'/'.rawurlencode($appointment->google_calendar_id ?: self::calendarIdForType($appointment->type)).'/events/'.rawurlencode($appointment->google_event_id))
-            ->throw();
+        $response = Http::timeout(20)->withToken(self::accessToken())
+            ->delete(self::CALENDAR_URL.'/'.rawurlencode($appointment->google_calendar_id ?: self::calendarIdForType($appointment->type)).'/events/'.rawurlencode($appointment->google_event_id));
+
+        if (in_array($response->status(), [404, 410], true)) {
+            return;
+        }
+
+        $response->throw();
+    }
+
+    public static function clearAppointmentColor(Appointment $appointment): void
+    {
+        if (! self::configured()
+            || ! self::connected()
+            || Setting::getValue('google_calendar_enabled', '0') !== '1'
+            || ! $appointment->google_event_id
+        ) {
+            return;
+        }
+
+        $token = self::accessToken();
+
+        foreach (self::calendarCandidates($appointment) as $calendarId) {
+            $url = self::CALENDAR_URL.'/'.rawurlencode($calendarId).'/events/'.rawurlencode($appointment->google_event_id);
+            $event = Http::timeout(20)->withToken($token)->get($url);
+
+            if (! $event->successful()) {
+                continue;
+            }
+
+            $payload = $event->json();
+            unset($payload['colorId']);
+
+            Http::timeout(20)
+                ->withToken($token)
+                ->put($url, $payload)
+                ->throw();
+
+            return;
+        }
+
+        throw new RuntimeException('Evento Google non trovato nei calendari selezionati.');
     }
 
     public static function events(Carbon $from, Carbon $to, ?string $calendarId = null): array
@@ -275,6 +314,16 @@ class GoogleCalendarClient
         return Setting::getValue('google_calendar_id') ?: config('services.google_calendar.calendar_id', 'primary');
     }
 
+    private static function calendarCandidates(Appointment $appointment): array
+    {
+        return collect([
+            $appointment->google_calendar_id,
+            self::calendarIdForType($appointment->type),
+            self::calendarId(),
+            ...self::selectedCalendarIds(),
+        ])->filter()->unique()->values()->all();
+    }
+
     private static function appointmentPayload(Appointment $appointment): array
     {
         $patient = $appointment->patient;
@@ -295,17 +344,6 @@ class GoogleCalendarClient
                 'dateTime' => $appointment->ends_at->toRfc3339String(),
                 'timeZone' => config('app.timezone', 'Europe/Rome'),
             ],
-            'colorId' => self::googleColorId($appointment->type),
         ];
-    }
-
-    private static function googleColorId(string $type): string
-    {
-        return match ($type) {
-            'personal' => '8',
-            'holiday' => '5',
-            'absence' => '11',
-            default => '2',
-        };
     }
 }

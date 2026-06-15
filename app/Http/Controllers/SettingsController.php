@@ -65,6 +65,7 @@ class SettingsController extends Controller
             'categories.*.label' => ['nullable', 'string', 'max:255'],
             'categories.*.color' => ['nullable', 'string', 'max:20'],
             'categories.*.google_calendar_id' => ['nullable', 'string', 'max:255'],
+            'categories.*.sync_patients' => ['nullable', 'boolean'],
         ]);
 
         foreach ($this->agendaSettingDefinitions() as $key => $definition) {
@@ -75,14 +76,25 @@ class SettingsController extends Controller
             Setting::setValue($key, $value, 'agenda');
         }
 
+        $googleCalendarsById = collect(json_decode(Setting::getValue('google_calendar_list', '[]'), true) ?: [])
+            ->keyBy('id');
+
         $categories = collect($validated['categories'] ?? [])
             ->filter(fn (array $category) => filled($category['label'] ?? null))
-            ->map(fn (array $category, int $index) => [
-                'key' => $category['key'] ?: 'custom_'.$index,
-                'label' => $category['label'] ?? '',
-                'color' => $category['color'] ?: '#5f948a',
-                'google_calendar_id' => $category['google_calendar_id'] ?? '',
-            ])
+            ->map(function (array $category, int $index) use ($googleCalendarsById) {
+                $googleCalendarId = $category['google_calendar_id'] ?? '';
+                $googleCalendarColor = $googleCalendarId
+                    ? ($googleCalendarsById->get($googleCalendarId)['backgroundColor'] ?? null)
+                    : null;
+
+                return [
+                    'key' => $category['key'] ?: 'custom_'.$index,
+                    'label' => $category['label'] ?? '',
+                    'color' => $googleCalendarColor ?: ($category['color'] ?: '#5f948a'),
+                    'google_calendar_id' => $googleCalendarId,
+                    'sync_patients' => (bool) ($category['sync_patients'] ?? false),
+                ];
+            })
             ->values()
             ->all();
 
@@ -199,7 +211,7 @@ class SettingsController extends Controller
     public function importInvoices(Request $request)
     {
         $validated = $request->validate([
-            'invoices_file' => ['required', 'file', 'mimes:xlsx', 'max:10240'],
+            'invoices_file' => ['required', 'file', 'mimes:xlsx,xls', 'max:10240'],
         ]);
 
         $result = InvoiceExcelImporter::import($validated['invoices_file']);
@@ -554,10 +566,10 @@ class SettingsController extends Controller
         }
 
         return [
-            ['key' => 'visit', 'label' => 'Visita osteopatica', 'color' => '#5f948a', 'google_calendar_id' => ''],
-            ['key' => 'personal', 'label' => 'Impegno personale', 'color' => '#64748b', 'google_calendar_id' => ''],
-            ['key' => 'holiday', 'label' => 'Ferie', 'color' => '#d97706', 'google_calendar_id' => ''],
-            ['key' => 'absence', 'label' => 'Assenza', 'color' => '#dc2626', 'google_calendar_id' => ''],
+            ['key' => 'visit', 'label' => 'Visita osteopatica', 'color' => '#5f948a', 'google_calendar_id' => '', 'sync_patients' => true],
+            ['key' => 'personal', 'label' => 'Impegno personale', 'color' => '#64748b', 'google_calendar_id' => '', 'sync_patients' => false],
+            ['key' => 'holiday', 'label' => 'Ferie', 'color' => '#d97706', 'google_calendar_id' => '', 'sync_patients' => false],
+            ['key' => 'absence', 'label' => 'Assenza', 'color' => '#dc2626', 'google_calendar_id' => '', 'sync_patients' => false],
         ];
     }
 

@@ -27,6 +27,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/patients/{patient}/invoices', [PatientController::class, 'invoices'])->name('patients.invoices.index');
     Route::get('/patients/{patient}/privacy', [PatientController::class, 'privacy'])->name('patients.privacy.index');
     Route::resource('appointments', AppointmentController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::patch('/appointments/{appointment}/move', [AppointmentController::class, 'move'])->name('appointments.move');
+    Route::patch('/appointments/{appointment}/patient-match', [AppointmentController::class, 'resolvePatient'])->name('appointments.patient-match.resolve');
+    Route::post('/appointments/{appointment}/patient-match/ignore', [AppointmentController::class, 'ignorePatientMatch'])->name('appointments.patient-match.ignore');
+    Route::post('/appointments/{appointment}/patient-match/new-patient', [AppointmentController::class, 'createPatientFromMatch'])->name('appointments.patient-match.new-patient');
     Route::post('/patients/{patient}/medical-record', [PatientController::class, 'storeMedicalRecord'])
         ->name('patients.medical-record.store');
     Route::post('/patients/{patient}/privacy-consent', [PatientController::class, 'storePrivacyConsent'])

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
@@ -42,8 +43,10 @@ class InvoiceController extends Controller
             ->keyBy('status');
 
         $invoices = $query
-            ->latest('issued_at')
-            ->latest('id')
+            ->orderByDesc('year')
+            ->orderByDesc('progressive_number')
+            ->orderByDesc('issued_at')
+            ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
 
@@ -102,7 +105,7 @@ class InvoiceController extends Controller
     private function availableYears()
     {
         return Invoice::whereHas('patient', fn ($query) => $query->where('user_id', Auth::id()))
-            ->selectRaw('YEAR(issued_at) as year')
+            ->selectRaw($this->datePartExpression('year').' as year')
             ->distinct()
             ->orderByDesc('year')
             ->pluck('year')
@@ -113,11 +116,24 @@ class InvoiceController extends Controller
     {
         return Invoice::whereHas('patient', fn ($query) => $query->where('user_id', Auth::id()))
             ->whereYear('issued_at', $year)
-            ->selectRaw('MONTH(issued_at) as month')
+            ->selectRaw($this->datePartExpression('month').' as month')
             ->distinct()
             ->orderBy('month')
             ->pluck('month')
             ->map(fn ($month) => (int) $month);
+    }
+
+    private function datePartExpression(string $part): string
+    {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return $part === 'year'
+                ? "strftime('%Y', issued_at)"
+                : "strftime('%m', issued_at)";
+        }
+
+        return $part === 'year'
+            ? 'YEAR(issued_at)'
+            : 'MONTH(issued_at)';
     }
 
     private function yearlyTotal(int $year): float
