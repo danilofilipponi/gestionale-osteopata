@@ -104,14 +104,25 @@ class AccountingController extends Controller
             ];
         });
 
-        $maxRevenue = max(1, $monthlyRows->max('total_income'));
+        $chartMetric = $request->query('chart_metric', 'total_income');
+        if (! in_array($chartMetric, ['invoiced', 'gross_income', 'total_income'], true)) {
+            $chartMetric = 'total_income';
+        }
+
+        $chartLabels = [
+            'invoiced' => 'Fatturato',
+            'gross_income' => 'Entrate lorde',
+            'total_income' => 'Totale entrate',
+        ];
+        $maxRevenue = max(1, $monthlyRows->max($chartMetric));
 
         $yearInvoiced = (float) $monthlyRows->sum('invoiced');
         $yearGrossIncome = (float) $monthlyRows->sum('gross_income');
         $yearTotalIncome = (float) $monthlyRows->sum('total_income');
         $taxSettings = $this->taxSettings();
-        $flatRateCosts = $yearTotalIncome * $taxSettings['flat_rate_costs_rate'] / 100;
-        $taxableIncome = max($yearTotalIncome - $flatRateCosts, 0);
+        $taxBase = $yearInvoiced;
+        $flatRateCosts = $taxBase * $taxSettings['flat_rate_costs_rate'] / 100;
+        $taxableIncome = max($taxBase - $flatRateCosts, 0);
         $tax15 = $taxableIncome * $taxSettings['tax_rate'] / 100;
         $inps = $taxableIncome * $taxSettings['inps_rate'] / 100;
         $taxesAndInps = $tax15 + $inps;
@@ -128,8 +139,11 @@ class AccountingController extends Controller
             'yearGrossIncome' => $yearGrossIncome,
             'yearTotalIncome' => $yearTotalIncome,
             'yearExpenses' => $monthlyRows->sum('expenses'),
+            'chartMetric' => $chartMetric,
+            'chartLabel' => $chartLabels[$chartMetric],
+            'chartTotal' => (float) $monthlyRows->sum($chartMetric),
             'taxSummary' => [
-                'gross_total' => $yearTotalIncome,
+                'gross_total' => $taxBase,
                 'flat_rate_costs' => $flatRateCosts,
                 'taxable_income' => $taxableIncome,
                 'tax_15' => $tax15,

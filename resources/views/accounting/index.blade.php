@@ -50,15 +50,26 @@
                 <div class="grid gap-0 lg:grid-cols-[190px_minmax(0,1fr)]">
                     <aside class="border-b border-line bg-white p-4 lg:border-b-0 lg:border-r">
                         <div class="flex items-center justify-between gap-3">
-                            <p class="text-base font-semibold leading-tight text-ink">Totale entrate</p>
-                            <p class="text-xl font-black text-[#0070c9]">€ {{ number_format($yearTotalIncome, 2, ',', '.') }}</p>
+                            <p class="text-base font-semibold leading-tight text-ink">{{ $chartLabel }}</p>
+                            <p class="text-xl font-black text-[#0070c9]">€ {{ number_format($chartTotal, 2, ',', '.') }}</p>
                         </div>
                     </aside>
 
                     <div class="p-4">
-                        <div class="relative flex items-center justify-center">
-                            <h3 class="text-xl font-black text-ink">Fatturato {{ $selectedYear }}</h3>
-                            <span class="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0070c9] text-sm font-black text-[#0070c9]">i</span>
+                        <div class="relative flex flex-wrap items-center justify-between gap-4">
+                            <div class="flex flex-1 items-center justify-center">
+                                <h3 class="text-xl font-black text-ink">{{ $chartLabel }} {{ $selectedYear }}</h3>
+                                <span class="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0070c9] text-sm font-black text-[#0070c9]">i</span>
+                            </div>
+                            <form method="GET" action="{{ route('accounting.index') }}" class="w-44">
+                                <input type="hidden" name="year" value="{{ $selectedYear }}">
+                                <x-input-label for="chart_metric" value="Visualizza" class="text-[10px]" />
+                                <select id="chart_metric" name="chart_metric" class="app-field mt-1 block w-full py-2 pr-8 text-sm font-bold" onchange="this.form.submit()">
+                                    <option value="invoiced" @selected($chartMetric === 'invoiced')>Fatturato</option>
+                                    <option value="gross_income" @selected($chartMetric === 'gross_income')>Entrate lorde</option>
+                                    <option value="total_income" @selected($chartMetric === 'total_income')>Totale entrate</option>
+                                </select>
+                            </form>
                         </div>
 
                         <div style="display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; margin-top: 20px;">
@@ -75,10 +86,11 @@
                                 <div style="height: 260px; position: relative; display: flex; align-items: flex-end; gap: 18px; padding: 0 10px; border-left: 1px solid #6b7f7a; border-bottom: 1px solid #6b7f7a; background: linear-gradient(to top, transparent 0, transparent calc(25% - 1px), #d6dfdc 25%, transparent calc(25% + 1px), transparent calc(50% - 1px), #d6dfdc 50%, transparent calc(50% + 1px), transparent calc(75% - 1px), #d6dfdc 75%, transparent calc(75% + 1px));">
                                     @foreach ($monthlyRows as $row)
                                         @php
-                                            $barHeight = $row['total_income'] > 0 ? max(10, round(($row['total_income'] / $maxRevenue) * 238)) : 0;
+                                            $chartValue = (float) $row[$chartMetric];
+                                            $barHeight = $chartValue > 0 ? max(10, round(($chartValue / $maxRevenue) * 238)) : 0;
                                         @endphp
                                         <div style="height: 100%; flex: 1; min-width: 0; display: flex; align-items: flex-end; justify-content: center;">
-                                            <div style="height: {{ $barHeight }}px; width: 70%; max-width: 58px; min-width: 22px; border: 2px solid #0070c9; background: #b7d7ee;" title="{{ $row['label'] }}: € {{ number_format($row['total_income'], 2, ',', '.') }}"></div>
+                                            <div style="height: {{ $barHeight }}px; width: 70%; max-width: 58px; min-width: 22px; border: 2px solid #0070c9; background: #b7d7ee;" title="{{ $row['label'] }}: € {{ number_format($chartValue, 2, ',', '.') }}"></div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -93,7 +105,7 @@
 
                         <div class="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-ink">
                             <span class="inline-block h-3 w-3 border border-[#0070c9] bg-[#dceeff]"></span>
-                            Totale entrate
+                            {{ $chartLabel }}
                         </div>
                     </div>
                 </div>
@@ -360,3 +372,7 @@
         </div>
     </div>
 </x-app-layout>
+
+
+
+

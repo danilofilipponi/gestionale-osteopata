@@ -16,6 +16,10 @@ class AccountingIncomeExcelImporter
     public static function importAnnualSummary(UploadedFile $file, int $year): int
     {
         $rows = self::rows($file->getRealPath());
+        if (self::looksLikeMonthlyAmountRows($rows)) {
+            return self::importMonthlySummaryRows($rows, $year, true);
+        }
+
         $headers = array_map(fn ($value) => self::normalizeHeader((string) $value), array_shift($rows) ?? []);
         $indexes = array_flip($headers);
         $updated = 0;
@@ -49,6 +53,10 @@ class AccountingIncomeExcelImporter
     public static function importGrossIncomeColumn(UploadedFile $file, int $year): int
     {
         $rows = self::rows($file->getRealPath());
+        if (self::looksLikeMonthlyAmountRows($rows)) {
+            return self::importMonthlySummaryRows($rows, $year, false);
+        }
+
         $headers = array_map(fn ($value) => self::normalizeHeader((string) $value), array_shift($rows) ?? []);
         $indexes = array_flip($headers);
         $updated = 0;
@@ -69,6 +77,44 @@ class AccountingIncomeExcelImporter
             ]);
             $summary->update(['gross_income_amount' => $grossIncome]);
 
+            $updated++;
+        }
+
+        return $updated;
+    }
+
+    private static function looksLikeMonthlyAmountRows(array $rows): bool
+    {
+        $first = $rows[0] ?? [];
+
+        return self::monthValue((string) ($first[0] ?? ''), null) !== null
+            && self::amountValue((string) ($first[1] ?? '')) !== null;
+    }
+
+    private static function importMonthlySummaryRows(array $rows, int $year, bool $includeInvoiced): int
+    {
+        $updated = 0;
+
+        foreach ($rows as $row) {
+            $month = self::monthValue((string) ($row[0] ?? ''), null);
+            $amount = self::amountValue((string) ($row[1] ?? ''));
+
+            if ($month === null || $amount === null) {
+                continue;
+            }
+
+            $summary = AccountingIncomeSummary::firstOrCreate([
+                'user_id' => Auth::id(),
+                'year' => $year,
+                'month' => $month,
+            ]);
+
+            $payload = ['gross_income_amount' => $amount];
+            if ($includeInvoiced) {
+                $payload['invoiced_amount'] = $amount;
+            }
+
+            $summary->update($payload);
             $updated++;
         }
 
@@ -216,7 +262,7 @@ class AccountingIncomeExcelImporter
 
         $normalized = strtolower(trim($value));
         $months = [
-            'gennaio' => 1, 'gen' => 1, 'febbraio' => 2, 'feb' => 2, 'marzo' => 3, 'mar' => 3,
+            'gennaio' => 1, 'genaio' => 1, 'gen' => 1, 'febbraio' => 2, 'feb' => 2, 'marzo' => 3, 'mar' => 3,
             'aprile' => 4, 'apr' => 4, 'maggio' => 5, 'mag' => 5, 'giugno' => 6, 'giu' => 6,
             'luglio' => 7, 'lug' => 7, 'agosto' => 8, 'ago' => 8, 'settembre' => 9, 'set' => 9,
             'ottobre' => 10, 'ott' => 10, 'novembre' => 11, 'nov' => 11, 'dicembre' => 12, 'dic' => 12,

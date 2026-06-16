@@ -100,6 +100,19 @@ class AccountingExpenseExcelImporter
             }
         }
 
+        foreach ($rows as $index => $row) {
+            $date = self::dateValue((string) ($row[0] ?? ''));
+            $amount = self::amountValue((string) ($row[1] ?? ''));
+            $description = trim((string) ($row[2] ?? ''));
+
+            if ($date !== null && $amount !== null && filled($description)) {
+                return [
+                    ['data', 'importo', 'descrizione'],
+                    array_slice($rows, $index),
+                ];
+            }
+        }
+
         if ($rows === []) {
             return null;
         }
