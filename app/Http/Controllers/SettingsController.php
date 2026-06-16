@@ -147,6 +147,27 @@ class SettingsController extends Controller
             ->with('status', 'Impostazioni sedute aggiornate.');
     }
 
+    public function updateAccounting(Request $request)
+    {
+        $validated = $request->validate([
+            'accounting_tax_regime' => ['required', 'string', 'max:100'],
+            'accounting_flat_rate_costs_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'accounting_tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'accounting_inps_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'accounting_november_tax_advance_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'accounting_november_inps_advance_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            'accounting_november_inps_installments' => ['required', 'integer', 'min:1', 'max:12'],
+        ]);
+
+        foreach ($this->accountingTaxSettingDefinitions() as $key => $definition) {
+            Setting::setValue($key, (string) ($validated[$key] ?? $definition['default']), 'accounting');
+        }
+
+        return redirect()
+            ->route('settings.accounting')
+            ->with('status', 'Impostazioni imposte aggiornate.');
+    }
+
     public function updateInvoices(Request $request)
     {
         $validated = $request->validate([
@@ -274,6 +295,7 @@ class SettingsController extends Controller
             'googleCalendarStatus' => GoogleCalendarClient::status(),
             'googleCalendars' => GoogleCalendarClient::storedCalendarList(),
             'selectedGoogleCalendarIds' => GoogleCalendarClient::selectedCalendarIds(),
+            'accountingTaxSettings' => $this->accountingTaxValues(),
             'patientExportFrom' => $patientExportFrom,
             'patientExportTo' => $patientExportTo,
             'patientExportCount' => $this->patientExportQuery($patientExportFrom, $patientExportTo)->count(),
@@ -500,6 +522,28 @@ class SettingsController extends Controller
     private function invoiceValues(): array
     {
         return collect($this->invoiceSettingDefinitions())
+            ->mapWithKeys(fn (array $definition, string $key) => [
+                $key => Setting::getValue($key, $definition['default']),
+            ])
+            ->all();
+    }
+
+    private function accountingTaxSettingDefinitions(): array
+    {
+        return [
+            'accounting_tax_regime' => ['default' => 'Regime forfettario'],
+            'accounting_flat_rate_costs_rate' => ['default' => '22'],
+            'accounting_tax_rate' => ['default' => '15'],
+            'accounting_inps_rate' => ['default' => '25.98'],
+            'accounting_november_tax_advance_rate' => ['default' => '60'],
+            'accounting_november_inps_advance_rate' => ['default' => '80'],
+            'accounting_november_inps_installments' => ['default' => '2'],
+        ];
+    }
+
+    private function accountingTaxValues(): array
+    {
+        return collect($this->accountingTaxSettingDefinitions())
             ->mapWithKeys(fn (array $definition, string $key) => [
                 $key => Setting::getValue($key, $definition['default']),
             ])

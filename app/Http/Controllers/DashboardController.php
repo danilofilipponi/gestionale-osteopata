@@ -26,10 +26,8 @@ class DashboardController extends Controller
             ->where('status', 'paid')
             ->whereBetween('issued_at', [$monthStart, $monthEnd])
             ->sum('amount');
-        $billableAppointmentTypes = collect(json_decode(Setting::getValue('agenda_categories', '[]'), true) ?: [])
+        $patientSyncCategories = collect(json_decode(Setting::getValue('agenda_categories', '[]'), true) ?: [])
             ->filter(fn (array $category) => (bool) ($category['sync_patients'] ?? false))
-            ->pluck('key')
-            ->filter()
             ->values();
         $defaultSessionRate = TreatmentSessionDefaults::defaultRate();
         $monthlyActiveRevenue = Invoice::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
@@ -53,20 +51,27 @@ class DashboardController extends Controller
             ->whereDate('starts_at', now()->toDateString())
             ->oldest('starts_at')
             ->get();
-        $expectedDailyAppointments = $todayAppointments
+        $patientSyncAppointments = $todayAppointments
             ->filter(fn (Appointment $appointment) => ! in_array($appointment->status, ['cancelled', 'no_show'], true))
-            ->filter(function (Appointment $appointment) use ($billableAppointmentTypes) {
-                if ($billableAppointmentTypes->isNotEmpty()) {
-                    return $billableAppointmentTypes->contains($appointment->type);
+            ->filter(fn (Appointment $appointment) => $patientSyncCategories->contains(function (array $category) use ($appointment) {
+                $categoryCalendarId = $category['google_calendar_id'] ?? null;
+
+                if (($category['key'] ?? null) !== $appointment->type) {
+                    return false;
                 }
 
-                return ! in_array($appointment->type, ['personal', 'holiday', 'absence'], true);
-            })
-            ->count();
+                if (filled($categoryCalendarId) && filled($appointment->google_calendar_id)) {
+                    return $categoryCalendarId === $appointment->google_calendar_id;
+                }
+
+                return blank($categoryCalendarId);
+            }));
+        $expectedDailyAppointments = $patientSyncAppointments->count();
 
         return view('dashboard', [
             'patientsCount' => Patient::where('user_id', $userId)->count(),
             'todayAppointments' => $todayAppointments,
+            'patientSyncAppointmentsCount' => $patientSyncAppointments->count(),
             'expectedDailyIncome' => $expectedDailyAppointments * (float) ($defaultSessionRate['amount'] ?? 0),
             'sessionsThisMonth' => TreatmentSession::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
                 ->whereBetween('session_date', [$monthStart, $monthEnd])

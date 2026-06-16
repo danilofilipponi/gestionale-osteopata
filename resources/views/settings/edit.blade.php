@@ -722,43 +722,163 @@
                     @endif
 
                     @if ($section === 'accounting')
-                    <section class="app-card p-6">
-                        <div class="flex flex-wrap items-start justify-between gap-4">
-                            <div>
-                                <h3 class="font-semibold text-gray-900">Impostazioni contabilita</h3>
-                                <p class="mt-1 text-sm text-gray-500">Base di configurazione per anno contabile, spese e imposte.</p>
+                    <div class="space-y-6">
+                        <section class="app-card p-6">
+                            <div class="flex flex-wrap items-start justify-between gap-4">
+                                <div>
+                                    <h3 class="font-semibold text-gray-900">Impostazioni contabilita</h3>
+                                    <p class="mt-1 text-sm text-gray-500">Importazione annuale di entrate e spese da file Excel.</p>
+                                </div>
+                                <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Contabilita</span>
                             </div>
-                            <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Contabilita</span>
-                        </div>
+                        </section>
 
-                        <div class="mt-5 grid gap-4 md:grid-cols-3">
-                            <div>
-                                <x-input-label value="Anno fiscale predefinito" />
-                                <select class="app-field mt-1 block w-full">
-                                    @foreach (range((int) now()->year, (int) now()->year - 5) as $year)
-                                        <option value="{{ $year }}" @selected($year === (int) now()->year)>{{ $year }}</option>
-                                    @endforeach
-                                </select>
+                        <section class="app-card overflow-hidden">
+                            <div class="border-b border-line px-6 py-4" style="background: #d4f0e1;">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-teal-100 bg-white text-sage">
+                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                                    </span>
+                                    <div>
+                                        <p class="text-xs font-bold uppercase text-muted">Entrate</p>
+                                        <h3 class="mt-1 text-lg font-semibold text-gray-900">Importa entrate annuali</h3>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <x-input-label value="Regime fiscale" />
-                                <select class="app-field mt-1 block w-full">
-                                    <option>Forfettario</option>
-                                    <option>Ordinario</option>
-                                </select>
-                            </div>
-                            <div>
-                                <x-input-label value="Importazione spese" />
-                                <button type="button" class="mt-1 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm font-bold text-ink shadow-sm hover:bg-mist">
-                                    Configura carica spese
-                                </button>
-                            </div>
-                        </div>
+                            <form method="POST" action="{{ route('settings.accounting.incomes.import') }}" enctype="multipart/form-data" class="space-y-4 p-6">
+                                @csrf
+                                <input id="accounting_income_year_value" type="hidden" name="year" value="{{ now()->year }}">
+                                <div class="gap-4" style="display: grid; grid-template-columns: 235px minmax(0, 1fr) 240px; align-items: end;">
+                                    <div>
+                                        <x-input-label for="accounting_annual_income_year" value="Anno contabile" />
+                                        <select id="accounting_annual_income_year" class="app-field mt-1 block w-full">
+                                            @foreach (range((int) now()->year + 1, (int) now()->year - 8) as $year)
+                                                <option value="{{ $year }}" @selected($year === (int) now()->year)>{{ $year }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <x-input-label for="accounting_annual_income_file" value="File Excel entrate annuali" />
+                                        <input id="accounting_annual_income_file" name="annual_incomes_file" type="file" accept=".xlsx,.xls" class="app-field mt-1 block w-full">
+                                    </div>
+                                    <x-primary-button name="import_kind" value="annual" class="w-full justify-center" onclick="document.getElementById('accounting_income_year_value').value = document.getElementById('accounting_annual_income_year').value">Carica entrate annuali</x-primary-button>
+                                </div>
 
-                        <div class="mt-5 rounded-xl border border-dashed border-line bg-mist p-5 text-sm font-semibold text-muted">
-                            Sezione pronta: qui collegheremo categorie spesa, aliquote e calcoli imposte quando definiamo il modello contabile.
-                        </div>
-                    </section>
+                                <div class="gap-4" style="display: grid; grid-template-columns: 235px minmax(0, 1fr) 240px; align-items: end;">
+                                    <div>
+                                        <x-input-label for="accounting_gross_income_year" value="Anno contabile" />
+                                        <select id="accounting_gross_income_year" class="app-field mt-1 block w-full">
+                                            @foreach (range((int) now()->year + 1, (int) now()->year - 8) as $year)
+                                                <option value="{{ $year }}" @selected($year === (int) now()->year)>{{ $year }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <x-input-label for="accounting_gross_income_file" value="File Excel sole entrate lorde" />
+                                        <input id="accounting_gross_income_file" name="gross_incomes_file" type="file" accept=".xlsx,.xls" class="app-field mt-1 block w-full">
+                                    </div>
+                                    <x-primary-button name="import_kind" value="gross" class="w-full justify-center" onclick="document.getElementById('accounting_income_year_value').value = document.getElementById('accounting_gross_income_year').value">Carica entrate lorde</x-primary-button>
+                                </div>
+
+                                <input type="hidden" name="replace_existing" value="0">
+                                <label class="flex items-center gap-2 text-sm font-semibold text-muted">
+                                    <input type="checkbox" name="replace_existing" value="1" checked class="rounded border-line text-sage focus:ring-sage">
+                                    Sostituisci le entrate gia importate per l'anno selezionato
+                                </label>
+                            </form>
+                        </section>
+
+                        <section class="app-card overflow-hidden">
+                            <div class="border-b border-line px-6 py-4" style="background: #ffd7d7;">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-100 bg-white text-rose-700">
+                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                    </span>
+                                    <div>
+                                        <p class="text-xs font-bold uppercase text-muted">Spese</p>
+                                        <h3 class="mt-1 text-lg font-semibold text-gray-900">Importa spese annuali</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <form method="POST" action="{{ route('settings.accounting.expenses.import') }}" enctype="multipart/form-data" class="grid gap-4 p-6 md:grid-cols-[160px_1fr_auto] md:items-end">
+                                @csrf
+                                <div>
+                                    <x-input-label for="accounting_expense_year" value="Anno contabile" />
+                                    <select id="accounting_expense_year" name="year" class="app-field mt-1 block w-full">
+                                        @foreach (range((int) now()->year + 1, (int) now()->year - 8) as $year)
+                                            <option value="{{ $year }}" @selected($year === (int) now()->year)>{{ $year }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <x-input-label for="accounting_expense_file" value="File Excel spese" />
+                                    <input id="accounting_expense_file" name="expenses_file" type="file" accept=".xlsx,.xls" class="app-field mt-1 block w-full" required>
+                                </div>
+                                <x-primary-button>Carica spese</x-primary-button>
+                                <input type="hidden" name="replace_existing" value="0">
+                                <label class="flex items-center gap-2 text-sm font-semibold text-muted md:col-span-3">
+                                    <input type="checkbox" name="replace_existing" value="1" checked class="rounded border-line text-sage focus:ring-sage">
+                                    Sostituisci le spese gia importate per l'anno selezionato
+                                </label>
+                            </form>
+                        </section>
+
+                        <section class="app-card overflow-hidden">
+                            <div class="border-b border-line px-6 py-4" style="background: #f5bf8e;">
+                                <div class="flex items-center gap-3">
+                                    <span class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-orange-100 bg-white text-orange-700">
+                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 18h6"/><path d="M9 12h2"/></svg>
+                                    </span>
+                                    <div>
+                                        <p class="text-xs font-bold uppercase text-muted">Imposte</p>
+                                        <h3 class="mt-1 text-lg font-semibold text-gray-900">Parametri di calcolo modificabili</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <form method="POST" action="{{ route('settings.accounting.update') }}" class="space-y-5 p-6">
+                                @csrf
+                                @method('PATCH')
+                                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                    <div>
+                                        <x-input-label for="accounting_tax_regime" value="Regime fiscale" />
+                                        <x-text-input id="accounting_tax_regime" name="accounting_tax_regime" class="mt-1 block w-full" :value="old('accounting_tax_regime', $accountingTaxSettings['accounting_tax_regime'])" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="accounting_flat_rate_costs_rate" value="Forfait spese (%)" />
+                                        <x-text-input id="accounting_flat_rate_costs_rate" name="accounting_flat_rate_costs_rate" type="number" step="0.01" min="0" max="100" class="mt-1 block w-full" :value="old('accounting_flat_rate_costs_rate', $accountingTaxSettings['accounting_flat_rate_costs_rate'])" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="accounting_tax_rate" value="Tasse (%)" />
+                                        <x-text-input id="accounting_tax_rate" name="accounting_tax_rate" type="number" step="0.01" min="0" max="100" class="mt-1 block w-full" :value="old('accounting_tax_rate', $accountingTaxSettings['accounting_tax_rate'])" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="accounting_inps_rate" value="INPS (%)" />
+                                        <x-text-input id="accounting_inps_rate" name="accounting_inps_rate" type="number" step="0.01" min="0" max="100" class="mt-1 block w-full" :value="old('accounting_inps_rate', $accountingTaxSettings['accounting_inps_rate'])" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="accounting_november_tax_advance_rate" value="Acconto novembre tasse (%)" />
+                                        <x-text-input id="accounting_november_tax_advance_rate" name="accounting_november_tax_advance_rate" type="number" step="0.01" min="0" max="100" class="mt-1 block w-full" :value="old('accounting_november_tax_advance_rate', $accountingTaxSettings['accounting_november_tax_advance_rate'])" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="accounting_november_inps_advance_rate" value="Acconto novembre INPS (%)" />
+                                        <x-text-input id="accounting_november_inps_advance_rate" name="accounting_november_inps_advance_rate" type="number" step="0.01" min="0" max="100" class="mt-1 block w-full" :value="old('accounting_november_inps_advance_rate', $accountingTaxSettings['accounting_november_inps_advance_rate'])" />
+                                    </div>
+                                    <div>
+                                        <x-input-label for="accounting_november_inps_installments" value="Rate acconto INPS" />
+                                        <x-text-input id="accounting_november_inps_installments" name="accounting_november_inps_installments" type="number" step="1" min="1" max="12" class="mt-1 block w-full" :value="old('accounting_november_inps_installments', $accountingTaxSettings['accounting_november_inps_installments'])" />
+                                    </div>
+                                </div>
+
+                                <div class="rounded-xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm font-semibold text-muted">
+                                    Questi valori alimentano il riepilogo imposte nella pagina Contabilita.
+                                </div>
+
+                                <div class="flex justify-end">
+                                    <x-primary-button>Salva impostazioni imposte</x-primary-button>
+                                </div>
+                            </form>
+                        </section>
+                    </div>
                     @endif
                 </div>
 

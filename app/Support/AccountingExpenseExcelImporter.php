@@ -12,41 +12,108 @@ use ZipArchive;
 
 class AccountingExpenseExcelImporter
 {
-    public static function import(UploadedFile $file, int $year, int $month): int
+    public static function importYear(UploadedFile $file, int $year): int
     {
-        $rows = self::rows($file->getRealPath());
-        $headers = array_map(fn ($value) => self::normalizeHeader((string) $value), array_shift($rows) ?? []);
-        $indexes = array_flip($headers);
         $created = 0;
 
-        foreach ($rows as $row) {
-            $amount = self::amountValue(self::valueAny($row, $indexes, ['importo', 'totale', 'spesa', 'amount']));
-            $description = self::valueAny($row, $indexes, ['causale', 'descrizione', 'fornitore', 'dettaglio', 'description']);
-            $date = self::dateValue(self::valueAny($row, $indexes, ['data', 'data spesa', 'data documento', 'date']));
+        foreach (self::tables($file->getRealPath()) as [$headers, $rows]) {
+            $indexes = array_flip($headers);
 
-            if ($amount === null && blank($description) && blank($date)) {
-                continue;
+            foreach ($rows as $row) {
+                $date = self::dateValue(self::valueAny($row, $indexes, ['data', 'data spesa', 'data documento', 'data operazione', 'data contabile', 'data valuta', 'date']));
+                $month = self::monthValue(self::valueAny($row, $indexes, ['mese', 'month']), $date);
+                $amount = self::amountValue(self::valueAny($row, $indexes, ['uscite', 'uscita', 'spese', 'spesa', 'costi', 'costo', 'pagamenti', 'pagamento', 'addebiti', 'addebito', 'dare', 'importo uscita', 'importo spesa', 'totale uscita', 'importo', 'totale', 'amount']));
+                $description = self::valueAny($row, $indexes, ['causale', 'descrizione', 'descrizione operazione', 'fornitore', 'dettaglio', 'beneficiario', 'description']);
+
+                if (($amount === null && blank($description) && blank($date)) || $month === null) {
+                    continue;
+                }
+
+                AccountingExpense::create([
+                    'user_id' => Auth::id(),
+                    'year' => $year,
+                    'month' => $month,
+                    'expense_date' => $date,
+                    'description' => $description ?: 'Spesa importata',
+                    'amount' => $amount ?? 0,
+                ]);
+
+                $created++;
             }
-
-            AccountingExpense::create([
-                'user_id' => Auth::id(),
-                'year' => $year,
-                'month' => $month,
-                'expense_date' => $date,
-                'description' => $description ?: 'Spesa importata',
-                'amount' => $amount ?? 0,
-            ]);
-
-            $created++;
         }
 
         return $created;
     }
 
-    private static function rows(string $path): array
+    public static function import(UploadedFile $file, int $year, int $month): int
+    {
+        $created = 0;
+
+        foreach (self::tables($file->getRealPath()) as [$headers, $rows]) {
+            $indexes = array_flip($headers);
+
+            foreach ($rows as $row) {
+                $amount = self::amountValue(self::valueAny($row, $indexes, ['uscite', 'uscita', 'spese', 'spesa', 'costi', 'costo', 'pagamenti', 'pagamento', 'addebiti', 'addebito', 'dare', 'importo uscita', 'importo spesa', 'totale uscita', 'importo', 'totale', 'amount']));
+                $description = self::valueAny($row, $indexes, ['causale', 'descrizione', 'descrizione operazione', 'fornitore', 'dettaglio', 'beneficiario', 'description']);
+                $date = self::dateValue(self::valueAny($row, $indexes, ['data', 'data spesa', 'data documento', 'data operazione', 'data contabile', 'data valuta', 'date']));
+
+                if ($amount === null && blank($description) && blank($date)) {
+                    continue;
+                }
+
+                AccountingExpense::create([
+                    'user_id' => Auth::id(),
+                    'year' => $year,
+                    'month' => $month,
+                    'expense_date' => $date,
+                    'description' => $description ?: 'Spesa importata',
+                    'amount' => $amount ?? 0,
+                ]);
+
+                $created++;
+            }
+        }
+
+        return $created;
+    }
+
+    private static function tables(string $path): array
+    {
+        return array_values(array_filter(array_map(function (array $rows) {
+            return self::tableFromRows($rows);
+        }, self::worksheets($path))));
+    }
+
+    private static function tableFromRows(array $rows): ?array
+    {
+        foreach ($rows as $index => $row) {
+            $headers = array_map(fn ($value) => self::normalizeHeader((string) $value), $row);
+            $score = collect($headers)->filter(fn (string $header) => in_array($header, [
+                'data', 'data spesa', 'data documento', 'data operazione', 'data contabile', 'data valuta',
+                'mese', 'uscite', 'uscita', 'spese', 'spesa', 'costi', 'costo', 'pagamenti', 'pagamento',
+                'addebiti', 'addebito', 'dare', 'importo uscita', 'importo spesa', 'totale uscita', 'importo', 'totale',
+                'causale', 'descrizione', 'descrizione operazione', 'fornitore', 'beneficiario',
+            ], true))->count();
+
+            if ($score >= 2) {
+                return [$headers, array_slice($rows, $index + 1)];
+            }
+        }
+
+        if ($rows === []) {
+            return null;
+        }
+
+        return [
+            array_map(fn ($value) => self::normalizeHeader((string) $value), array_shift($rows) ?? []),
+            $rows,
+        ];
+    }
+
+    private static function worksheets(string $path): array
     {
         if (self::isLegacyXls($path)) {
-            return LegacyXlsReader::rows($path);
+            return [LegacyXlsReader::rows($path)];
         }
 
         $zip = new ZipArchive();
@@ -55,13 +122,37 @@ class AccountingExpenseExcelImporter
         }
 
         $sharedStrings = self::sharedStrings($zip);
-        $xml = $zip->getFromName('xl/worksheets/sheet1.xml');
-        $zip->close();
+        $sheetNames = [];
 
-        if ($xml === false) {
-            throw new RuntimeException('Foglio spese non trovato.');
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $name = $zip->getNameIndex($index);
+            if (preg_match('#^xl/worksheets/sheet\d+\.xml$#', $name)) {
+                $sheetNames[] = $name;
+            }
         }
 
+        natsort($sheetNames);
+        $worksheets = [];
+
+        foreach ($sheetNames as $sheetName) {
+            $xml = $zip->getFromName($sheetName);
+            if ($xml !== false) {
+                $worksheets[] = self::worksheetRows($xml, $sharedStrings);
+            }
+        }
+
+        $zip->close();
+
+        return $worksheets;
+    }
+
+    private static function rows(string $path): array
+    {
+        return self::worksheets($path)[0] ?? [];
+    }
+
+    private static function worksheetRows(string $xml, array $sharedStrings): array
+    {
         $worksheet = new SimpleXMLElement($xml);
         $worksheet->registerXPathNamespace('main', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
         $parsedRows = [];
@@ -135,9 +226,43 @@ class AccountingExpenseExcelImporter
             return (new DateTimeImmutable('1899-12-30'))->modify('+'.(int) $value.' days')->format('Y-m-d');
         }
 
+        foreach (['d/m/Y', 'd-m-Y', 'd.m.Y', 'Y-m-d'] as $format) {
+            $date = DateTimeImmutable::createFromFormat($format, trim($value));
+            if ($date instanceof DateTimeImmutable) {
+                return $date->format('Y-m-d');
+            }
+        }
+
         $timestamp = strtotime($value);
 
         return $timestamp ? date('Y-m-d', $timestamp) : null;
+    }
+
+    private static function monthValue(string $value, ?string $date): ?int
+    {
+        if ($date) {
+            return (int) date('n', strtotime($date));
+        }
+
+        if (blank($value)) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($value));
+        $months = [
+            'gennaio' => 1, 'gen' => 1, 'febbraio' => 2, 'feb' => 2, 'marzo' => 3, 'mar' => 3,
+            'aprile' => 4, 'apr' => 4, 'maggio' => 5, 'mag' => 5, 'giugno' => 6, 'giu' => 6,
+            'luglio' => 7, 'lug' => 7, 'agosto' => 8, 'ago' => 8, 'settembre' => 9, 'set' => 9,
+            'ottobre' => 10, 'ott' => 10, 'novembre' => 11, 'nov' => 11, 'dicembre' => 12, 'dic' => 12,
+        ];
+
+        if (isset($months[$normalized])) {
+            return $months[$normalized];
+        }
+
+        return is_numeric($normalized) && (int) $normalized >= 1 && (int) $normalized <= 12
+            ? (int) $normalized
+            : null;
     }
 
     private static function amountValue(string $value): ?float
@@ -146,7 +271,7 @@ class AccountingExpenseExcelImporter
             return null;
         }
 
-        $normalized = str_replace(['EUR', '€', ' '], '', $value);
+        $normalized = str_replace(['EUR', '€', 'â‚¬', 'Ã¢â€šÂ¬', ' '], '', $value);
         $normalized = str_contains($normalized, ',')
             ? str_replace(',', '.', str_replace('.', '', $normalized))
             : $normalized;

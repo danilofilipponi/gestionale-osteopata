@@ -34,7 +34,7 @@
                             </select>
                         </form>
                     </div>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">EUR {{ number_format($summary['total'], 2, ',', '.') }}</p>
+                    <p class="mt-2 text-3xl font-semibold text-gray-900">€ {{ number_format($summary['total'], 2, ',', '.') }}</p>
                 </div>
                 <div class="app-card p-5">
                     <div class="flex items-start justify-between gap-3">
@@ -57,11 +57,11 @@
                             </select>
                         </form>
                     </div>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">EUR {{ number_format($summary['paid'], 2, ',', '.') }}</p>
+                    <p class="mt-2 text-3xl font-semibold text-gray-900">€ {{ number_format($summary['paid'], 2, ',', '.') }}</p>
                 </div>
                 <div class="app-card p-5">
                     <p class="text-sm text-gray-500">Da incassare/emettere</p>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">EUR {{ number_format($summary['open'], 2, ',', '.') }}</p>
+                    <p class="mt-2 text-3xl font-semibold text-gray-900">€ {{ number_format($summary['open'], 2, ',', '.') }}</p>
                 </div>
             </div>
 
@@ -162,7 +162,7 @@
                                             {{ $statuses[$invoice->status] ?? $invoice->status }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 text-right font-bold text-ink">EUR {{ number_format($invoice->amount, 2, ',', '.') }}</td>
+                                    <td class="px-6 py-4 text-right font-bold text-ink">€ {{ number_format($invoice->amount, 2, ',', '.') }}</td>
                                     <td class="px-6 py-4 text-center">
                                         @if ($invoice->xml_downloaded_at)
                                             <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-lg font-black text-emerald-700" title="XML scaricato">✓</span>

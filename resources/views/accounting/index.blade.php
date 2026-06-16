@@ -20,9 +20,19 @@
     </style>
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-4">
-            <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Contabilita</h2>
-                <p class="mt-1 text-sm text-gray-500">Riepilogo contabile annuale con entrate, uscite e area imposte.</p>
+            <div class="flex flex-wrap items-center gap-4">
+                <div>
+                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">Contabilita</h2>
+                    <p class="mt-1 text-sm text-gray-500">Riepilogo contabile annuale con entrate, uscite e area imposte.</p>
+                </div>
+                <form method="GET" action="{{ route('accounting.index') }}" class="w-32">
+                    <x-input-label for="year" value="Anno" class="text-[10px]" />
+                    <select id="year" name="year" class="app-field mt-1 block w-full py-2 pr-8 text-sm font-bold" onchange="this.form.submit()">
+                        @foreach ($years as $year)
+                            <option value="{{ $year }}" @selected($selectedYear === $year)>{{ $year }}</option>
+                        @endforeach
+                    </select>
+                </form>
             </div>
             <a href="{{ route('settings.accounting') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">
                 Impostazioni contabilita
@@ -36,28 +46,12 @@
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
             @endif
 
-            <section class="app-card p-6">
-                <form method="GET" action="{{ route('accounting.index') }}" class="max-w-xs">
-                    <x-input-label for="year" value="Anno contabile" />
-                    <select id="year" name="year" class="app-field mt-1 block w-full" onchange="this.form.submit()">
-                        @foreach ($years as $year)
-                            <option value="{{ $year }}" @selected($selectedYear === $year)>{{ $year }}</option>
-                        @endforeach
-                    </select>
-                </form>
-            </section>
-
             <section class="app-card overflow-hidden">
                 <div class="grid gap-0 lg:grid-cols-[190px_minmax(0,1fr)]">
                     <aside class="border-b border-line bg-white p-4 lg:border-b-0 lg:border-r">
-                        <div class="inline-flex overflow-hidden rounded-t-md border-b border-sage text-xs font-bold">
-                            <span class="bg-white px-3 py-2 text-ink">Mese</span>
-                            <span class="bg-gray-200 px-3 py-2 text-muted">Trimestre</span>
-                        </div>
-
-                        <div class="mt-10">
-                            <p class="text-base font-semibold leading-tight text-ink">Totale<br>entrate</p>
-                            <p class="mt-3 text-xl font-black text-[#0070c9]">EUR {{ number_format($yearTotalIncome, 2, ',', '.') }}</p>
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-base font-semibold leading-tight text-ink">Totale entrate</p>
+                            <p class="text-xl font-black text-[#0070c9]">€ {{ number_format($yearTotalIncome, 2, ',', '.') }}</p>
                         </div>
                     </aside>
 
@@ -67,38 +61,33 @@
                             <span class="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#0070c9] text-sm font-black text-[#0070c9]">i</span>
                         </div>
 
-                        <div class="mt-5 grid grid-cols-[44px_1fr] gap-3">
-                            <div class="relative h-64 text-[11px] font-semibold text-muted">
+                        <div style="display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; margin-top: 20px;">
+                            <div style="height: 260px; position: relative; color: #6b7f7a; font-size: 11px; font-weight: 700;">
                                 @foreach ([100, 75, 50, 25, 0] as $tick)
                                     @php
                                         $value = ($maxRevenue / 100) * $tick;
                                     @endphp
-                                    <span class="absolute right-0 -translate-y-1/2" style="top: {{ 100 - $tick }}%">{{ number_format($value, 0, ',', '.') }}</span>
+                                    <span style="position: absolute; right: 0; top: {{ 100 - $tick }}%; transform: translateY(-50%);">{{ number_format($value, 0, ',', '.') }}</span>
                                 @endforeach
                             </div>
 
-                            <div class="relative h-64 overflow-hidden border-b border-l border-gray-400">
-                                @foreach ([0, 25, 50, 75, 100] as $line)
-                                    <div class="absolute left-0 right-0 border-t border-gray-300" style="bottom: {{ $line }}%"></div>
-                                @endforeach
-
-                                <div class="absolute inset-x-0 bottom-0 z-10 flex h-64 items-end gap-5 px-2">
+                            <div>
+                                <div style="height: 260px; position: relative; display: flex; align-items: flex-end; gap: 18px; padding: 0 10px; border-left: 1px solid #6b7f7a; border-bottom: 1px solid #6b7f7a; background: linear-gradient(to top, transparent 0, transparent calc(25% - 1px), #d6dfdc 25%, transparent calc(25% + 1px), transparent calc(50% - 1px), #d6dfdc 50%, transparent calc(50% + 1px), transparent calc(75% - 1px), #d6dfdc 75%, transparent calc(75% + 1px));">
                                     @foreach ($monthlyRows as $row)
                                         @php
-                                            $barHeight = $row['total_income'] > 0 ? max(8, round(($row['total_income'] / $maxRevenue) * 236)) : 0;
+                                            $barHeight = $row['total_income'] > 0 ? max(10, round(($row['total_income'] / $maxRevenue) * 238)) : 0;
                                         @endphp
-                                        <div class="flex h-full min-w-0 flex-1 flex-col items-center justify-end">
-                                            <div style="height: {{ $barHeight }}px; width: 100%; max-width: 54px; min-width: 24px; border: 2px solid #0070c9; background: #b7d7ee;" title="{{ $row['label'] }}: EUR {{ number_format($row['total_income'], 2, ',', '.') }}"></div>
+                                        <div style="height: 100%; flex: 1; min-width: 0; display: flex; align-items: flex-end; justify-content: center;">
+                                            <div style="height: {{ $barHeight }}px; width: 70%; max-width: 58px; min-width: 22px; border: 2px solid #0070c9; background: #b7d7ee;" title="{{ $row['label'] }}: € {{ number_format($row['total_income'], 2, ',', '.') }}"></div>
                                         </div>
                                     @endforeach
                                 </div>
-                            </div>
 
-                            <div></div>
-                            <div class="flex gap-4 px-1 pt-2">
-                                @foreach ($monthlyRows as $row)
-                                    <span class="min-w-0 flex-1 text-center text-[11px] font-semibold text-ink">{{ $row['short_label'] }}</span>
-                                @endforeach
+                                <div style="display: flex; gap: 18px; padding: 8px 10px 0;">
+                                    @foreach ($monthlyRows as $row)
+                                        <span style="flex: 1; min-width: 0; text-align: center; font-size: 11px; font-weight: 700; color: #17312d;">{{ $row['short_label'] }}</span>
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
 
@@ -110,9 +99,9 @@
                 </div>
             </section>
 
-            <section class="accounting-monthly-grid" style="display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(360px, .65fr); gap: 24px; align-items: start;">
-                <div class="app-card overflow-hidden">
-                    <div class="flex items-center gap-3 border-b border-line bg-white px-6 py-4">
+            <section class="accounting-monthly-grid" style="display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(360px, .65fr); gap: 24px; align-items: stretch;">
+                <div class="app-card overflow-hidden" style="display: flex; flex-direction: column; height: 100%; background: #e4f7ed;">
+                    <div class="flex items-center gap-3 border-b border-line px-6 py-4" style="background: #d4f0e1;">
                         <span class="accounting-icon">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
                         </span>
@@ -121,40 +110,40 @@
                             <h3 class="mt-1 text-lg font-semibold text-gray-900">Riepilogo mensile</h3>
                         </div>
                     </div>
-                    <div class="overflow-x-auto" style="width: 100%;">
+                    <div class="overflow-x-auto" style="width: 100%; flex: 1;">
                         <table class="text-sm" style="width: 100%; table-layout: fixed;">
                             <thead class="bg-mist text-xs font-bold uppercase text-muted">
-                                <tr>
-                                    <th class="px-5 py-3 text-left" style="width: 25%;">Mese</th>
-                                    <th class="px-5 py-3 text-right" style="width: 25%;">Fatturato</th>
-                                    <th class="px-5 py-3 text-right" style="width: 25%;">Entrate lorde</th>
-                                    <th class="px-5 py-3 text-right" style="width: 25%;">Totale entrate</th>
+                                <tr style="height: 42px;">
+                                    <th class="px-5 text-left" style="width: 25%;">Mese</th>
+                                    <th class="px-5 text-right" style="width: 25%;">Fatturato</th>
+                                    <th class="px-5 text-right" style="width: 25%;">Entrate lorde</th>
+                                    <th class="px-5 text-right" style="width: 25%;">Totale entrate</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-line bg-white">
+                            <tbody class="divide-y divide-line" style="background: #eefaf4;">
                                 @foreach ($monthlyRows as $row)
-                                    <tr>
-                                        <td class="px-5 py-3 font-bold text-ink">{{ $row['label'] }}</td>
-                                        <td class="px-5 py-3 text-right font-semibold text-ink">EUR {{ number_format($row['invoiced'], 2, ',', '.') }}</td>
-                                        <td class="px-5 py-3 text-right font-semibold text-muted">EUR {{ number_format($row['gross_income'], 2, ',', '.') }}</td>
-                                        <td class="px-5 py-3 text-right font-semibold text-sage">EUR {{ number_format($row['total_income'], 2, ',', '.') }}</td>
+                                    <tr style="height: 45px;">
+                                        <td class="px-5 font-bold text-ink">{{ $row['label'] }}</td>
+                                        <td class="px-5 text-right font-semibold text-ink">€ {{ number_format($row['invoiced'], 2, ',', '.') }}</td>
+                                        <td class="px-5 text-right font-semibold text-muted">€ {{ number_format($row['gross_income'], 2, ',', '.') }}</td>
+                                        <td class="px-5 text-right font-semibold text-sage">€ {{ number_format($row['total_income'], 2, ',', '.') }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
-                            <tfoot class="border-t-2 border-line bg-mist font-bold">
-                                <tr>
-                                    <td class="px-5 py-3">Totale</td>
-                                    <td class="px-5 py-3 text-right">EUR {{ number_format($yearInvoiced, 2, ',', '.') }}</td>
-                                    <td class="px-5 py-3 text-right text-muted">EUR {{ number_format($yearGrossIncome, 2, ',', '.') }}</td>
-                                    <td class="px-5 py-3 text-right text-sage">EUR {{ number_format($yearTotalIncome, 2, ',', '.') }}</td>
+                            <tfoot class="border-t-2 border-line font-bold" style="background: #d4f0e1;">
+                                <tr style="height: 45px;">
+                                    <td class="px-5">Totale</td>
+                                    <td class="px-5 text-right">€ {{ number_format($yearInvoiced, 2, ',', '.') }}</td>
+                                    <td class="px-5 text-right text-muted">€ {{ number_format($yearGrossIncome, 2, ',', '.') }}</td>
+                                    <td class="px-5 text-right text-sage">€ {{ number_format($yearTotalIncome, 2, ',', '.') }}</td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
                 </div>
 
-                <div class="app-card overflow-hidden">
-                    <div class="flex items-center justify-between gap-3 border-b border-line bg-white px-6 py-4">
+                <div class="app-card overflow-hidden" style="display: flex; flex-direction: column; height: 100%; background: #ffe8e8;">
+                    <div class="flex items-center justify-between gap-3 border-b border-line px-6 py-4" style="background: #ffd7d7;">
                         <div class="flex items-center gap-3">
                             <span class="accounting-icon">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -166,35 +155,35 @@
                         </div>
                         <button type="button" class="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink shadow-sm hover:bg-mist" @click="expensesModal = true">Carica spese</button>
                     </div>
-                    <div class="overflow-x-auto" style="width: 100%;">
+                    <div class="overflow-x-auto" style="width: 100%; flex: 1;">
                         <table class="text-sm" style="width: 100%; table-layout: fixed;">
                             <thead class="bg-mist text-xs font-bold uppercase text-muted">
-                                <tr>
-                                    <th class="px-4 py-3 text-left" style="width: 42%;">Mese</th>
-                                    <th class="px-4 py-3 text-right" style="width: 38%;">Uscite</th>
-                                    <th class="px-4 py-3 text-right" style="width: 20%;">Info</th>
+                                <tr style="height: 42px;">
+                                    <th class="px-4 text-left" style="width: 42%;">Mese</th>
+                                    <th class="px-4 text-right" style="width: 38%;">Uscite</th>
+                                    <th class="px-4 text-right" style="width: 20%;">Info</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-line bg-white">
+                            <tbody class="divide-y divide-line" style="background: #fff0f0;">
                                 @foreach ($monthlyRows as $row)
-                                    <tr>
-                                        <td class="px-4 py-3 font-bold text-ink">{{ $row['label'] }}</td>
-                                        <td class="px-4 py-3 text-right font-semibold text-ink">EUR {{ number_format($row['expenses'], 2, ',', '.') }}</td>
-                                        <td class="px-4 py-3 text-right">
+                                    <tr style="height: 45px;">
+                                        <td class="px-4 font-bold text-ink">{{ $row['label'] }}</td>
+                                        <td class="px-4 text-right font-semibold text-ink">€ {{ number_format($row['expenses'], 2, ',', '.') }}</td>
+                                        <td class="px-4 text-right">
                                             <button
                                                 type="button"
-                                                class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-sm font-black text-sage shadow-sm hover:bg-mist"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-line bg-white text-xs font-black text-sage shadow-sm hover:bg-mist"
                                                 @click='expenseInfoTitle = @json($row["label"]); expenseInfoRows = @json($row["expense_details"]); expenseInfoModal = true'
                                             >i</button>
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
-                            <tfoot class="border-t-2 border-line bg-mist font-bold">
-                                <tr>
-                                    <td class="px-4 py-3">Totale</td>
-                                    <td class="px-4 py-3 text-right">EUR {{ number_format($yearExpenses, 2, ',', '.') }}</td>
-                                    <td class="px-4 py-3"></td>
+                            <tfoot class="border-t-2 border-line font-bold" style="background: #ffd7d7;">
+                                <tr style="height: 45px;">
+                                    <td class="px-4">Totale</td>
+                                    <td class="px-4 text-right">€ {{ number_format($yearExpenses, 2, ',', '.') }}</td>
+                                    <td class="px-4"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -210,7 +199,7 @@
                         </span>
                         <div>
                             <p class="text-xs font-bold uppercase text-muted">Imposte</p>
-                            <h3 class="mt-1 text-lg font-semibold text-gray-900">Regime forfettario {{ $selectedYear }}</h3>
+                            <h3 class="mt-1 text-lg font-semibold text-gray-900">{{ $taxSummary['settings']['accounting_tax_regime'] }} {{ $selectedYear }}</h3>
                         </div>
                     </div>
                     <span class="rounded-full border border-line bg-mist px-3 py-1.5 text-xs font-bold text-sage">Aliquote da Excel</span>
@@ -218,34 +207,34 @@
 
                 <div class="mt-5 grid gap-5 xl:grid-cols-[1fr_.8fr]">
                     <div class="overflow-hidden rounded-xl border border-line bg-white">
-                        <div class="bg-[#f5bf8e] px-5 py-2 text-center text-sm font-black text-ink">Regime forfettario</div>
+                        <div class="bg-[#f5bf8e] px-5 py-2 text-center text-sm font-black text-ink">{{ $taxSummary['settings']['accounting_tax_regime'] ?? 'Regime forfettario' }}</div>
                         <table class="w-full text-sm">
                             <tbody class="divide-y divide-line">
                                 <tr>
                                     <td class="px-5 py-3 font-bold text-ink">Tot. fatturato lordo</td>
-                                    <td class="px-5 py-3 text-right font-bold text-ink">EUR {{ number_format($taxSummary['gross_total'], 2, ',', '.') }}</td>
+                                    <td class="px-5 py-3 text-right font-bold text-ink">€ {{ number_format($taxSummary['gross_total'], 2, ',', '.') }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="px-5 py-3 font-semibold text-muted">Forfait spese 22%</td>
-                                    <td class="px-5 py-3 text-right font-semibold text-ink">EUR {{ number_format($taxSummary['flat_rate_costs'], 2, ',', '.') }}</td>
+                                    <td class="px-5 py-3 font-semibold text-muted">Forfait spese {{ number_format($taxSummary['settings']['flat_rate_costs_rate'], 2, ',', '.') }}%</td>
+                                    <td class="px-5 py-3 text-right font-semibold text-ink">€ {{ number_format($taxSummary['flat_rate_costs'], 2, ',', '.') }}</td>
                                 </tr>
                                 <tr>
                                     <td class="px-5 py-3 font-semibold text-muted">Reddito imponibile</td>
-                                    <td class="px-5 py-3 text-right font-semibold text-ink">EUR {{ number_format($taxSummary['taxable_income'], 2, ',', '.') }}</td>
+                                    <td class="px-5 py-3 text-right font-semibold text-ink">€ {{ number_format($taxSummary['taxable_income'], 2, ',', '.') }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="px-5 py-3 font-semibold text-muted">Tasse 15%</td>
-                                    <td class="px-5 py-3 text-right font-semibold text-ink">EUR {{ number_format($taxSummary['tax_15'], 2, ',', '.') }}</td>
+                                    <td class="px-5 py-3 font-semibold text-muted">Tasse {{ number_format($taxSummary['settings']['tax_rate'], 2, ',', '.') }}%</td>
+                                    <td class="px-5 py-3 text-right font-semibold text-ink">€ {{ number_format($taxSummary['tax_15'], 2, ',', '.') }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="px-5 py-3 font-semibold text-muted">INPS 25,98%</td>
-                                    <td class="px-5 py-3 text-right font-semibold text-ink">EUR {{ number_format($taxSummary['inps'], 2, ',', '.') }}</td>
+                                    <td class="px-5 py-3 font-semibold text-muted">INPS {{ number_format($taxSummary['settings']['inps_rate'], 2, ',', '.') }}%</td>
+                                    <td class="px-5 py-3 text-right font-semibold text-ink">€ {{ number_format($taxSummary['inps'], 2, ',', '.') }}</td>
                                 </tr>
                             </tbody>
-                            <tfoot class="border-t-2 border-ink bg-[#f5bf8e]">
+                            <tfoot style="background: #f5bf8e; border-top: 4px solid #17312d;">
                                 <tr>
-                                    <td class="px-5 py-3 font-black text-ink">Tot. tasse + INPS</td>
-                                    <td class="px-5 py-3 text-right font-black text-ink">EUR {{ number_format($taxSummary['taxes_and_inps'], 2, ',', '.') }}</td>
+                                    <td class="px-5 py-4 text-base font-black text-ink">Tot. tasse + INPS</td>
+                                    <td class="px-5 py-4 text-right text-base font-black text-ink">€ {{ number_format($taxSummary['taxes_and_inps'], 2, ',', '.') }}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -256,18 +245,18 @@
                         <table class="w-full text-sm">
                             <tbody class="divide-y divide-line">
                                 <tr>
-                                    <td class="px-5 py-3 font-semibold text-muted">TAX 60%</td>
-                                    <td class="px-5 py-3 text-right font-bold text-ink">EUR {{ number_format($taxSummary['november_tax_advance'], 2, ',', '.') }}</td>
+                                    <td class="px-5 py-3 font-semibold text-muted">TAX {{ number_format($taxSummary['settings']['november_tax_advance_rate'], 2, ',', '.') }}%</td>
+                                    <td class="px-5 py-3 text-right font-bold text-ink">€ {{ number_format($taxSummary['november_tax_advance'], 2, ',', '.') }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="px-5 py-3 font-semibold text-muted">INPS 80% / 2</td>
-                                    <td class="px-5 py-3 text-right font-bold text-ink">EUR {{ number_format($taxSummary['november_inps_advance'], 2, ',', '.') }}</td>
+                                    <td class="px-5 py-3 font-semibold text-muted">INPS {{ number_format($taxSummary['settings']['november_inps_advance_rate'], 2, ',', '.') }}% / {{ $taxSummary['settings']['november_inps_installments'] }}</td>
+                                    <td class="px-5 py-3 text-right font-bold text-ink">€ {{ number_format($taxSummary['november_inps_advance'], 2, ',', '.') }}</td>
                                 </tr>
                             </tbody>
-                            <tfoot class="border-t-2 border-ink bg-[#cfc2de]">
+                            <tfoot style="background: #cfc2de; border-top: 4px solid #17312d;">
                                 <tr>
-                                    <td class="px-5 py-3 font-black text-ink">Tot. acconto novembre</td>
-                                    <td class="px-5 py-3 text-right font-black text-ink">EUR {{ number_format($taxSummary['november_advance_total'], 2, ',', '.') }}</td>
+                                    <td class="px-5 py-4 text-base font-black text-ink">Tot. acconto novembre</td>
+                                    <td class="px-5 py-4 text-right text-base font-black text-ink">€ {{ number_format($taxSummary['november_advance_total'], 2, ',', '.') }}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -275,7 +264,7 @@
                 </div>
 
                 <div class="mt-4 rounded-xl border border-line bg-mist px-5 py-4 text-xs font-semibold text-muted">
-                    Calcolo da Excel: forfait spese = fatturato lordo x 22%; tasse = imponibile x 15%; INPS = imponibile x 25,98%; acconto novembre = 60% tasse + meta dell'80% INPS.
+                    Calcolo da impostazioni: forfait spese = fatturato lordo x {{ number_format($taxSummary['settings']['flat_rate_costs_rate'], 2, ',', '.') }}%; tasse = imponibile x {{ number_format($taxSummary['settings']['tax_rate'], 2, ',', '.') }}%; INPS = imponibile x {{ number_format($taxSummary['settings']['inps_rate'], 2, ',', '.') }}%; acconto novembre = {{ number_format($taxSummary['settings']['november_tax_advance_rate'], 2, ',', '.') }}% tasse + quota INPS configurata.
                 </div>
             </section>
 

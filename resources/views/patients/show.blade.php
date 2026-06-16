@@ -700,7 +700,7 @@
                         </div>
                         <div>
                             <x-input-label for="new_invoice_line_total" value="Totale prestazione" />
-                            <div id="new_invoice_line_total" class="mt-1 rounded-xl border border-line bg-mist px-3.5 py-3 text-sm font-bold text-ink" data-invoice-line-total-display>EUR {{ number_format((float) ($defaultInvoiceService['amount'] ?? 0), 2, ',', '.') }}</div>
+                            <div id="new_invoice_line_total" class="mt-1 rounded-xl border border-line bg-mist px-3.5 py-3 text-sm font-bold text-ink" data-invoice-line-total-display>€ {{ number_format((float) ($defaultInvoiceService['amount'] ?? 0), 2, ',', '.') }}</div>
                         </div>
                         <div>
                             <x-input-label for="new_invoice_status" value="Stato fattura" />
@@ -747,13 +747,13 @@
                         <div>
                             <x-input-label value="Bollo" />
                             <div class="mt-1 rounded-xl border border-line bg-white px-3.5 py-3 text-sm font-bold text-ink" data-invoice-stamp-display>
-                                EUR 0,00
+                                € 0,00
                             </div>
                         </div>
                         <div>
                             <x-input-label value="Totale fattura" />
                             <div class="mt-1 rounded-xl border-2 border-sage/30 bg-mist px-3.5 py-3 text-sm font-bold text-sage" data-invoice-total-display>
-                                EUR {{ number_format((float) ($defaultInvoiceService['amount'] ?? 0), 2, ',', '.') }}
+                                € {{ number_format((float) ($defaultInvoiceService['amount'] ?? 0), 2, ',', '.') }}
                             </div>
                         </div>
                     </div>
@@ -775,7 +775,7 @@
                                     {{ $year }}
                                 </span>
                                 <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold text-muted">
-                                    {{ $invoices->count() }} fatture - EUR {{ number_format($yearTotal, 2, ',', '.') }}
+                                    {{ $invoices->count() }} fatture - € {{ number_format($yearTotal, 2, ',', '.') }}
                                 </span>
                             </summary>
                             <div class="mt-4 space-y-3">
@@ -810,7 +810,7 @@
                                                 </div>
                                             </div>
                                             <div class="flex flex-wrap justify-end gap-2 text-xs font-bold">
-                                                <span class="inline-flex items-center gap-1 rounded-full border border-line bg-white px-2.5 py-1 text-muted">{!! $invoiceIcon('euro') !!} EUR {{ number_format($invoiceAmounts['total'], 2, ',', '.') }}</span>
+                                                <span class="inline-flex items-center gap-1 rounded-full border border-line bg-white px-2.5 py-1 text-muted">{!! $invoiceIcon('euro') !!} € {{ number_format($invoiceAmounts['total'], 2, ',', '.') }}</span>
                                                 <span class="rounded-full border border-line bg-white px-2.5 py-1 text-muted">{{ $paymentLabel($invoice->payment_method) }}</span>
                                                 <span class="rounded-full px-2.5 py-1 {{ $invoice->status === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">{{ $invoiceStatusLabels[$invoice->status] ?? $invoice->status }}</span>
                                                 <span class="rounded-full px-2.5 py-1 {{ $sent ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200' }}">{{ $sent ? 'Inviata' : 'Non inviata' }}</span>

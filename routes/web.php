@@ -24,6 +24,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
     Route::post('/accounting/expenses/import', [AccountingController::class, 'importExpenses'])->name('accounting.expenses.import');
+    Route::post('/settings/accounting/incomes/import', [AccountingController::class, 'importYearIncomes'])->name('settings.accounting.incomes.import');
+    Route::post('/settings/accounting/expenses/import', [AccountingController::class, 'importYearExpenses'])->name('settings.accounting.expenses.import');
     Route::delete('/accounting/expenses', [AccountingController::class, 'deleteExpenses'])->name('accounting.expenses.delete');
     Route::resource('patients', PatientController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::get('/patients/{patient}/anamnesis', [PatientController::class, 'anamnesis'])->name('patients.anamnesis.index');
@@ -69,6 +71,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/settings/invoices', [SettingsController::class, 'updateInvoices'])->name('settings.invoices.update');
     Route::patch('/settings/sessions', [SettingsController::class, 'updateSessions'])->name('settings.sessions.update');
     Route::patch('/settings/agenda', [SettingsController::class, 'updateAgenda'])->name('settings.agenda.update');
+    Route::patch('/settings/accounting', [SettingsController::class, 'updateAccounting'])->name('settings.accounting.update');
     Route::get('/settings/invoices/export-xml', [SettingsController::class, 'exportInvoicesXml'])->name('settings.invoices.export-xml');
     Route::post('/settings/invoices/import', [SettingsController::class, 'importInvoices'])->name('settings.invoices.import');
     Route::post('/settings/users', [SettingsController::class, 'storeUser'])->name('settings.users.store');
