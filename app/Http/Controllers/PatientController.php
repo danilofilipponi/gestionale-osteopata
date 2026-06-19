@@ -11,6 +11,7 @@ use App\Support\PatientExcelImporter;
 use App\Support\PatientAddressNormalizer;
 use App\Support\InvoiceCourtesyPdf;
 use App\Support\InvoiceDefaults;
+use App\Support\TreatmentSessionAutomation;
 use App\Support\PrivacyConsentPdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -300,6 +301,7 @@ class PatientController extends Controller
         $invoice->update([
             'description' => $this->invoiceAutomaticDescription($invoice),
         ]);
+        TreatmentSessionAutomation::registerInvoice($patient, $invoice);
 
         return back()->with('status', 'Fattura aggiornata.');
     }
@@ -358,6 +360,7 @@ class PatientController extends Controller
         $invoice->update([
             'description' => $this->invoiceAutomaticDescription($invoice),
         ]);
+        TreatmentSessionAutomation::registerInvoice($patient, $invoice);
 
         return redirect()
             ->route('patients.invoices.preview', [$patient, $invoice])

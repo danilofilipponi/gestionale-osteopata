@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\InvoiceExcelImporter;
 use App\Support\InvoiceXmlExporter;
 use App\Support\GoogleCalendarClient;
+use App\Support\PrivacyConsentTemplate;
 use App\Support\TreatmentSessionDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +50,16 @@ class SettingsController extends Controller
     public function accounting(Request $request)
     {
         return $this->settingsView($request, 'accounting');
+    }
+
+    public function privacy(Request $request)
+    {
+        return $this->settingsView($request, 'privacy');
+    }
+
+    public function backup(Request $request)
+    {
+        return $this->settingsView($request, 'backup');
     }
 
     public function updateAgenda(Request $request)
@@ -166,6 +177,67 @@ class SettingsController extends Controller
         return redirect()
             ->route('settings.accounting')
             ->with('status', 'Impostazioni imposte aggiornate.');
+    }
+
+    public function updatePrivacy(Request $request)
+    {
+        $request->validate([
+            'privacy_consent_template' => ['nullable', 'string'],
+            'privacy_template_file' => ['nullable', 'file', 'max:10240'],
+        ]);
+
+        $template = $request->input('privacy_consent_template', '');
+
+        if ($request->hasFile('privacy_template_file')) {
+            $template = $this->privacyTemplateFromUpload($request->file('privacy_template_file'));
+        }
+
+        abort_if(blank($template), 422, 'Il documento privacy non puo essere vuoto.');
+
+        Setting::setValue('privacy_consent_template', trim($template), 'privacy');
+        Setting::setValue('privacy_consent_template_updated_at', now()->toDateTimeString(), 'privacy');
+
+        return redirect()
+            ->route('settings.privacy')
+            ->with('status', 'Documento privacy aggiornato.');
+    }
+
+    public function updateBackup(Request $request)
+    {
+        $validated = $request->validate([
+            'backup_enabled' => ['nullable', 'boolean'],
+            'backup_frequency' => ['required', Rule::in(['daily', 'weekly', 'monthly'])],
+            'backup_time' => ['required', 'date_format:H:i'],
+            'backup_retention_days' => ['required', 'integer', 'min:1', 'max:3650'],
+            'backup_destination' => ['required', Rule::in(['local', 'external', 'cloud'])],
+            'backup_path' => ['nullable', 'string', 'max:500'],
+            'backup_database' => ['nullable', 'boolean'],
+            'backup_uploaded_files' => ['nullable', 'boolean'],
+            'backup_generated_documents' => ['nullable', 'boolean'],
+            'backup_logs' => ['nullable', 'boolean'],
+            'backup_encrypt' => ['nullable', 'boolean'],
+            'backup_notify_email' => ['nullable', 'email', 'max:255'],
+            'backup_notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        foreach ($this->backupSettingDefinitions() as $key => $definition) {
+            $value = in_array($key, [
+                'backup_enabled',
+                'backup_database',
+                'backup_uploaded_files',
+                'backup_generated_documents',
+                'backup_logs',
+                'backup_encrypt',
+            ], true)
+                ? (string) (int) $request->boolean($key)
+                : (string) ($validated[$key] ?? $definition['default']);
+
+            Setting::setValue($key, $value, 'backup');
+        }
+
+        return redirect()
+            ->route('settings.backup')
+            ->with('status', 'Impostazioni backup aggiornate.');
     }
 
     public function updateInvoices(Request $request)
@@ -296,6 +368,9 @@ class SettingsController extends Controller
             'googleCalendars' => GoogleCalendarClient::storedCalendarList(),
             'selectedGoogleCalendarIds' => GoogleCalendarClient::selectedCalendarIds(),
             'accountingTaxSettings' => $this->accountingTaxValues(),
+            'privacyTemplate' => PrivacyConsentTemplate::text(),
+            'privacyTemplateUpdatedAt' => Setting::getValue('privacy_consent_template_updated_at'),
+            'backupSettings' => $this->backupValues(),
             'patientExportFrom' => $patientExportFrom,
             'patientExportTo' => $patientExportTo,
             'patientExportCount' => $this->patientExportQuery($patientExportFrom, $patientExportTo)->count(),
@@ -409,6 +484,42 @@ class SettingsController extends Controller
         return collect($this->settings())
             ->mapWithKeys(fn (array $definition, string $key) => [$key => $definition['rules']])
             ->all();
+    }
+
+    private function privacyTemplateFromUpload($file): string
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if ($extension === 'txt') {
+            return trim((string) file_get_contents($file->getRealPath()));
+        }
+
+        if ($extension === 'docx') {
+            return $this->textFromDocx($file->getRealPath());
+        }
+
+        abort(422, 'Carica un file .txt oppure .docx.');
+    }
+
+    private function textFromDocx(string $path): string
+    {
+        abort_unless(class_exists(\ZipArchive::class), 422, 'La lettura dei file Word non e disponibile su questo PC.');
+
+        $zip = new \ZipArchive();
+        abort_if($zip->open($path) !== true, 422, 'Non riesco ad aprire il file Word caricato.');
+
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        abort_if($xml === false, 422, 'Il file Word non contiene un documento leggibile.');
+
+        $xml = preg_replace('/<\/w:p>/', "\n\n", $xml);
+        $xml = preg_replace('/<w:tab\/>/', "\t", $xml);
+        $text = html_entity_decode(strip_tags($xml), ENT_QUOTES | ENT_XML1, 'UTF-8');
+        $text = preg_replace("/[ \t]+\n/", "\n", $text);
+        $text = preg_replace("/\n{3,}/", "\n\n", $text);
+
+        return trim($text);
     }
 
     private function settings(): array
@@ -544,6 +655,34 @@ class SettingsController extends Controller
     private function accountingTaxValues(): array
     {
         return collect($this->accountingTaxSettingDefinitions())
+            ->mapWithKeys(fn (array $definition, string $key) => [
+                $key => Setting::getValue($key, $definition['default']),
+            ])
+            ->all();
+    }
+
+    private function backupSettingDefinitions(): array
+    {
+        return [
+            'backup_enabled' => ['default' => '1'],
+            'backup_frequency' => ['default' => 'daily'],
+            'backup_time' => ['default' => '22:00'],
+            'backup_retention_days' => ['default' => '30'],
+            'backup_destination' => ['default' => 'local'],
+            'backup_path' => ['default' => 'storage/app/backups'],
+            'backup_database' => ['default' => '1'],
+            'backup_uploaded_files' => ['default' => '1'],
+            'backup_generated_documents' => ['default' => '1'],
+            'backup_logs' => ['default' => '0'],
+            'backup_encrypt' => ['default' => '0'],
+            'backup_notify_email' => ['default' => ''],
+            'backup_notes' => ['default' => ''],
+        ];
+    }
+
+    private function backupValues(): array
+    {
+        return collect($this->backupSettingDefinitions())
             ->mapWithKeys(fn (array $definition, string $key) => [
                 $key => Setting::getValue($key, $definition['default']),
             ])

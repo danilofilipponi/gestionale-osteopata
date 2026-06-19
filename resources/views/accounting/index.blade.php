@@ -40,7 +40,7 @@
         </div>
     </x-slot>
 
-    <div class="py-8" x-data="{ expensesModal: false, expenseInfoModal: false, expenseInfoTitle: '', expenseInfoRows: [] }">
+    <div class="py-8" x-data="{ expensesModal: false, expenseInfoModal: false, expenseInfoTitle: '', expenseInfoRows: [], toInvoiceInfoModal: false, toInvoiceMonth: null }">
         <div class="app-section space-y-6">
             @if (session('status'))
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
@@ -66,7 +66,7 @@
                                 <x-input-label for="chart_metric" value="Visualizza" class="text-[10px]" />
                                 <select id="chart_metric" name="chart_metric" class="app-field mt-1 block w-full py-2 pr-8 text-sm font-bold" onchange="this.form.submit()">
                                     <option value="invoiced" @selected($chartMetric === 'invoiced')>Fatturato</option>
-                                    <option value="gross_income" @selected($chartMetric === 'gross_income')>Entrate lorde</option>
+                                    <option value="to_invoice" @selected($chartMetric === 'to_invoice')>Da fatturare</option>
                                     <option value="total_income" @selected($chartMetric === 'total_income')>Totale entrate</option>
                                 </select>
                             </form>
@@ -126,10 +126,11 @@
                         <table class="text-sm" style="width: 100%; table-layout: fixed;">
                             <thead class="bg-mist text-xs font-bold uppercase text-muted">
                                 <tr style="height: 42px;">
-                                    <th class="px-5 text-left" style="width: 25%;">Mese</th>
-                                    <th class="px-5 text-right" style="width: 25%;">Fatturato</th>
-                                    <th class="px-5 text-right" style="width: 25%;">Entrate lorde</th>
-                                    <th class="px-5 text-right" style="width: 25%;">Totale entrate</th>
+                                    <th class="px-5 text-left" style="width: 22%;">Mese</th>
+                                    <th class="px-5 text-right" style="width: 24%;">Fatturato</th>
+                                    <th class="px-5 text-right" style="width: 24%;">Da fatturare</th>
+                                    <th class="px-3 text-right" style="width: 8%;">Info</th>
+                                    <th class="px-5 text-right" style="width: 22%;">Totale entrate</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-line" style="background: #eefaf4;">
@@ -137,7 +138,14 @@
                                     <tr style="height: 45px;">
                                         <td class="px-5 font-bold text-ink">{{ $row['label'] }}</td>
                                         <td class="px-5 text-right font-semibold text-ink">€ {{ number_format($row['invoiced'], 2, ',', '.') }}</td>
-                                        <td class="px-5 text-right font-semibold text-muted">€ {{ number_format($row['gross_income'], 2, ',', '.') }}</td>
+                                        <td class="px-5 text-right font-semibold text-muted">€ {{ number_format($row['to_invoice'], 2, ',', '.') }}</td>
+                                        <td class="px-3 text-right">
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-full border border-line bg-white text-xs font-black text-sage shadow-sm hover:bg-mist"
+                                                @click="toInvoiceMonth = {{ $row['month'] }}; toInvoiceInfoModal = true"
+                                            >i</button>
+                                        </td>
                                         <td class="px-5 text-right font-semibold text-sage">€ {{ number_format($row['total_income'], 2, ',', '.') }}</td>
                                     </tr>
                                 @endforeach
@@ -146,7 +154,8 @@
                                 <tr style="height: 45px;">
                                     <td class="px-5">Totale</td>
                                     <td class="px-5 text-right">€ {{ number_format($yearInvoiced, 2, ',', '.') }}</td>
-                                    <td class="px-5 text-right text-muted">€ {{ number_format($yearGrossIncome, 2, ',', '.') }}</td>
+                                    <td class="px-5 text-right text-muted">€ {{ number_format($yearToInvoice, 2, ',', '.') }}</td>
+                                    <td class="px-3"></td>
                                     <td class="px-5 text-right text-sage">€ {{ number_format($yearTotalIncome, 2, ',', '.') }}</td>
                                 </tr>
                             </tfoot>
@@ -330,6 +339,98 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <div x-cloak x-show="toInvoiceInfoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+                <div class="w-full max-w-4xl rounded-2xl border border-line bg-white p-6 shadow-2xl" @click.outside="toInvoiceInfoModal = false">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-bold uppercase text-muted">Da fatturare</p>
+                            <template x-for="month in [toInvoiceMonth]" :key="month">
+                                <h3 class="mt-1 text-xl font-bold text-ink">
+                                    @foreach ($monthlyRows as $row)
+                                        <span x-show="month === {{ $row['month'] }}">{{ $row['label'] }} {{ $selectedYear }}</span>
+                                    @endforeach
+                                </h3>
+                            </template>
+                        </div>
+                        <button type="button" class="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink hover:bg-mist" @click="toInvoiceInfoModal = false">Chiudi</button>
+                    </div>
+
+                    @foreach ($monthlyRows as $row)
+                        <div x-show="toInvoiceMonth === {{ $row['month'] }}" class="mt-5 overflow-hidden rounded-xl border border-line">
+                            <table class="min-w-full text-sm">
+                                <thead class="bg-mist text-xs font-bold uppercase text-muted">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left" style="width: 18%;">Data</th>
+                                        <th class="px-4 py-3 text-left" style="width: 32%;">Paziente</th>
+                                        <th class="px-4 py-3 text-left" style="width: 32%;">Importo calcolato</th>
+                                        <th class="px-4 py-3 text-right" style="width: 18%;">Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-line bg-white">
+                                    @forelse ($row['to_invoice_sessions'] as $session)
+                                        @php
+                                            $currentFee = (float) ($session->fee ?? 0);
+                                            $hasCurrentFeeInRates = collect($sessionRates)->contains(fn ($rate) => abs((float) ($rate['amount'] ?? 0) - $currentFee) < 0.01);
+                                        @endphp
+                                        <tr>
+                                            <td class="px-4 py-3 font-semibold text-ink">{{ $session->session_date?->format('d/m/Y') }}</td>
+                                            <td class="px-4 py-3 font-semibold text-ink">{{ $session->patient?->list_name ?: 'Paziente non indicato' }}</td>
+                                            <td class="px-4 py-3">
+                                                <form id="update-to-invoice-session-{{ $session->id }}" method="POST" action="{{ route('patients.sessions.update', [$session->patient_id, $session]) }}" class="flex items-center gap-2">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <input type="hidden" name="session_date" value="{{ $session->session_date?->toDateString() }}">
+                                                    <input type="hidden" name="title" value="{{ $session->title ?: 'Seduta osteopatica' }}">
+                                                    <input type="hidden" name="paid" value="0">
+                                                    <span class="relative inline-flex min-w-[165px]">
+                                                        <select name="fee" class="app-field w-full appearance-none py-2 pl-4 pr-12 text-sm">
+                                                            @unless ($hasCurrentFeeInRates)
+                                                                <option value="{{ number_format($currentFee, 2, '.', '') }}" selected>€ {{ number_format($currentFee, 2, ',', '.') }}</option>
+                                                            @endunless
+                                                            @foreach ($sessionRates as $rate)
+                                                                @php $rateAmount = (float) ($rate['amount'] ?? 0); @endphp
+                                                                <option value="{{ number_format($rateAmount, 2, '.', '') }}" @selected(abs($rateAmount - $currentFee) < 0.01)>
+                                                                    € {{ number_format($rateAmount, 2, ',', '.') }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                        <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sage">
+                                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+                                                            </svg>
+                                                        </span>
+                                                    </span>
+                                                    <button class="rounded-xl bg-sage px-3 py-2 text-xs font-bold text-white hover:bg-[#4f7f75]">Salva</button>
+                                                </form>
+                                            </td>
+                                            <td class="px-4 py-3 text-right">
+                                                <form method="POST" action="{{ route('patients.sessions.destroy', [$session->patient_id, $session]) }}" onsubmit="return confirm('Cancellare questa seduta dal conteggio?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button class="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50">Cancella</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-8 text-center text-sm font-semibold text-muted">
+                                                Nessuna seduta da fatturare per questo mese.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+
+                            @if (($row['manual_to_invoice'] ?? 0) > 0)
+                                <div class="border-t border-line bg-mist px-4 py-3 text-xs font-semibold text-muted">
+                                    In questo mese sono presenti anche € {{ number_format($row['manual_to_invoice'], 2, ',', '.') }} inseriti/importati manualmente.
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
             </div>
 

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Patient;
 use App\Models\PrivacyConsent;
+use App\Support\PrivacyConsentTemplate;
 
 class PrivacyConsentPdf
 {
@@ -66,6 +67,24 @@ class PrivacyConsentPdf
         $y = self::MARGIN;
         $w = self::PAGE_W - (self::MARGIN * 2);
         $signedAt = ($consent?->signed_at ?: now())->format('d/m/Y');
+        $template = PrivacyConsentTemplate::compile($patient, $signedAt);
+        $template = trim((string) preg_replace('/\nDATA:.*\nFIRMA\s*$/', '', $template));
+
+        $cursor = $this->renderTemplate($x, $y, $w, $template);
+        $cursor = $this->ensureSpace($cursor + 10, 120);
+        $this->line($x, $cursor, $x + $w, $cursor);
+        $cursor += 25;
+        $this->text($x, $cursor, 'DATA: '.$signedAt, 9, true);
+        $this->text($x + 210, $cursor, 'FIRMA', 9, true);
+
+        if ($this->signatureData) {
+            $this->imageFit($x + 210, $cursor + 12, 275, 92);
+        } else {
+            $this->rect($x + 210, $cursor + 10, 275, 92);
+        }
+
+        return;
+
         $residence = trim(collect([
             trim(collect([$patient->address, $patient->street_number])->filter()->join(' ')),
             $patient->postal_code,
@@ -163,6 +182,48 @@ class PrivacyConsentPdf
         } else {
             $this->rect($x + 210, $cursor + 10, 275, 92);
         }
+    }
+
+    private function renderTemplate(float $x, float $y, float $w, string $text): float
+    {
+        $cursor = $y;
+        $blocks = preg_split("/\R{2,}/", str_replace(["\r\n", "\r"], "\n", $text)) ?: [];
+
+        foreach ($blocks as $block) {
+            $block = trim($block);
+
+            if ($block === '') {
+                continue;
+            }
+
+            $lines = array_values(array_filter(array_map('trim', explode("\n", $block)), fn (string $line) => $line !== ''));
+            $isHeading = count($lines) === 1
+                && mb_strlen($lines[0]) <= 85
+                && mb_strtoupper($lines[0]) === $lines[0]
+                && ! str_contains($lines[0], '[X]');
+
+            if ($isHeading) {
+                $cursor = $this->ensureSpace($cursor, 26);
+                $this->section($x, $cursor, $lines[0]);
+                $cursor += 24;
+
+                continue;
+            }
+
+            foreach ($lines as $line) {
+                $cursor = $this->ensureSpace($cursor, 36);
+                $isStrong = str_starts_with($line, 'OSTEOPATA:')
+                    || str_starts_with($line, 'Nome e Cognome:')
+                    || str_starts_with($line, 'CONSENSO ')
+                    || str_starts_with($line, 'COMUNICAZIONE ')
+                    || str_starts_with($line, 'TRATTAMENTO ');
+                $cursor = $this->textWrap($x, $cursor, $line, $w, 8.4, 11.5, $isStrong) + 6;
+            }
+
+            $cursor += 4;
+        }
+
+        return $cursor;
     }
 
     private function newPage(): void

@@ -2,9 +2,14 @@
     @csrf
     @method('PATCH')
 
-    <input type="hidden" name="patient_id" value="{{ $appointment->patient_id }}">
-    <div class="rounded-xl border border-line bg-mist px-3 py-2 text-xs font-bold text-muted">
+    <input type="hidden" name="patient_id" value="{{ $appointment->patient_id }}" data-appointment-patient-id>
+    <div class="rounded-xl border border-line bg-mist px-3 py-2 text-xs font-bold text-muted" data-appointment-patient-label>
         {{ $appointment->patient?->list_name ?: 'Impegno personale / evento Google' }}
+    </div>
+    <div class="hidden rounded-xl border border-line bg-white p-3" data-link-patient-panel>
+        <label class="text-xs font-bold uppercase text-muted">Collega paziente</label>
+        <input type="text" class="app-field mt-2 py-2" placeholder="Scrivi cognome e nome paziente" data-link-patient-search autocomplete="off">
+        <div class="mt-2 hidden max-h-48 overflow-y-auto rounded-xl border border-line bg-white p-1 shadow-sm" data-link-patient-results></div>
     </div>
     <input name="title" class="app-field py-2" value="{{ $appointment->title }}" required>
     <div class="grid gap-2 sm:grid-cols-2">
@@ -28,7 +33,15 @@
 
     <div class="flex items-center justify-between gap-3">
         <button form="delete-appointment-{{ $appointment->id }}" class="text-sm font-bold text-red-700 hover:text-red-900" onclick="return confirm('Eliminare questo appuntamento?')">Elimina</button>
-        <button class="rounded-xl bg-sage px-3 py-2 text-sm font-bold text-white hover:bg-[#4f7f75]">Salva</button>
+        <div class="flex items-center gap-2">
+            <button type="button" class="rounded-xl border border-sage bg-white px-3 py-2 text-sm font-bold text-sage hover:bg-mist" data-toggle-link-patient>Collega</button>
+            <a
+                href="{{ $appointment->patient_id ? route('patients.show', $appointment->patient_id) : '#' }}"
+                class="{{ $appointment->patient_id ? 'inline-flex' : 'hidden' }} rounded-xl border border-line bg-white px-3 py-2 text-sm font-bold text-ink hover:bg-mist"
+                data-patient-folder-link
+            >Cartella paziente</a>
+            <button class="rounded-xl bg-sage px-3 py-2 text-sm font-bold text-white hover:bg-[#4f7f75]">Salva</button>
+        </div>
     </div>
 </form>
 <form id="delete-appointment-{{ $appointment->id }}" method="POST" action="{{ route('appointments.destroy', $appointment) }}" class="hidden">

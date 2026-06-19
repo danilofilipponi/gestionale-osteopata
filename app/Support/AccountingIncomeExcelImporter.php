@@ -28,7 +28,7 @@ class AccountingIncomeExcelImporter
             $date = self::dateValue(self::valueAny($row, $indexes, ['data', 'date']));
             $month = self::monthValue(self::valueAny($row, $indexes, ['mese', 'month']), $date);
             $invoiced = self::amountValue(self::valueAny($row, $indexes, ['fatturato', 'fatturato attivo', 'totale fatturato', 'fatture']));
-            $grossIncome = self::amountValue(self::valueAny($row, $indexes, ['entrate lorde', 'entrate', 'incassi', 'incasso']));
+            $grossIncome = self::amountValue(self::valueAny($row, $indexes, ['da fatturare', 'entrate lorde', 'entrate', 'incassi', 'incasso']));
             $totalIncome = self::amountValue(self::valueAny($row, $indexes, ['totale entrate', 'totale']));
 
             if ($grossIncome === null && $totalIncome !== null && $invoiced !== null) {
@@ -64,7 +64,7 @@ class AccountingIncomeExcelImporter
         foreach ($rows as $row) {
             $date = self::dateValue(self::valueAny($row, $indexes, ['data', 'data entrata', 'data incasso', 'date']));
             $month = self::monthValue(self::valueAny($row, $indexes, ['mese', 'month']), $date);
-            $grossIncome = self::amountValue(self::valueAny($row, $indexes, ['entrate lorde', 'entrata lorda', 'importo', 'totale', 'entrata', 'incasso', 'amount']));
+            $grossIncome = self::amountValue(self::valueAny($row, $indexes, ['da fatturare', 'entrate lorde', 'entrata lorda', 'importo', 'totale', 'entrata', 'incasso', 'amount']));
 
             if ($month === null || $grossIncome === null) {
                 continue;

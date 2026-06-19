@@ -83,8 +83,6 @@
 
                         @foreach ([
                             'studio' => 'Dati studio',
-                            'billing' => 'Fatturazione',
-                            'operations' => 'Preferenze operative',
                         ] as $group => $title)
                             <section class="app-card p-6">
                                 <h3 class="font-semibold text-gray-900">{{ $title }}</h3>
@@ -774,16 +772,16 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <x-input-label for="accounting_gross_income_file" value="File Excel sole entrate lorde" />
+                                        <x-input-label for="accounting_gross_income_file" value="File Excel da fatturare" />
                                         <input id="accounting_gross_income_file" name="gross_incomes_file" type="file" accept=".xlsx,.xls" class="app-field mt-1 block w-full">
                                     </div>
-                                    <x-primary-button name="import_kind" value="gross" class="w-full justify-center" onclick="document.getElementById('accounting_income_year_value').value = document.getElementById('accounting_gross_income_year').value">Carica entrate lorde</x-primary-button>
+                                    <x-primary-button name="import_kind" value="gross" class="w-full justify-center" onclick="document.getElementById('accounting_income_year_value').value = document.getElementById('accounting_gross_income_year').value">Carica da fatturare</x-primary-button>
                                 </div>
 
                                 <input type="hidden" name="replace_existing" value="0">
                                 <label class="flex items-center gap-2 text-sm font-semibold text-muted">
                                     <input type="checkbox" name="replace_existing" value="1" checked class="rounded border-line text-sage focus:ring-sage">
-                                    Sostituisci le entrate gia importate per l'anno selezionato
+                                    Sostituisci i valori manuali gia importati per l'anno selezionato
                                 </label>
                             </form>
                         </section>
@@ -880,6 +878,166 @@
                         </section>
                     </div>
                     @endif
+
+                    @if ($section === 'privacy')
+                    <section class="app-card overflow-hidden">
+                        <div class="border-b border-line bg-cyan-50 px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-cyan-100 bg-white text-cyan-700">
+                                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg>
+                                </span>
+                                <div>
+                                    <p class="text-xs font-bold uppercase text-muted">Privacy</p>
+                                    <h3 class="mt-1 text-lg font-semibold text-gray-900">Documento originale consenso</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form method="POST" action="{{ route('settings.privacy.update') }}" enctype="multipart/form-data" class="space-y-5 p-6">
+                            @csrf
+                            @method('PATCH')
+
+                            <div class="rounded-xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-muted">
+                                Questo testo viene usato per creare il PDF privacy nella cartella del paziente. I campi tra doppie graffe vengono compilati automaticamente dal gestionale.
+                            </div>
+
+                            <div>
+                                <x-input-label for="privacy_consent_template" value="Testo documento privacy" />
+                                <textarea id="privacy_consent_template" name="privacy_consent_template" rows="28" class="mt-1 block w-full rounded-xl border-line bg-white px-4 py-3 font-mono text-sm text-gray-900 shadow-sm focus:border-brand focus:ring-brand">{{ old('privacy_consent_template', $privacyTemplate) }}</textarea>
+                                <p class="mt-2 text-xs text-muted">
+                                    Segnaposto disponibili:
+                                    <code>@{{paziente_nome_cognome}}</code>,
+                                    <code>@{{paziente_luogo_nascita}}</code>,
+                                    <code>@{{paziente_data_nascita}}</code>,
+                                    <code>@{{paziente_codice_fiscale}}</code>,
+                                    <code>@{{paziente_residenza}}</code>,
+                                    <code>@{{data_consenso}}</code>.
+                                </p>
+                            </div>
+
+                            <div class="grid items-end gap-4 md:grid-cols-[1fr_auto]">
+                                <div>
+                                    <x-input-label for="privacy_template_file" value="Sostituisci documento con file Word o testo" />
+                                    <input id="privacy_template_file" name="privacy_template_file" type="file" accept=".txt,.docx" class="mt-1 block w-full rounded-xl border border-line bg-white px-4 py-3 text-sm shadow-sm">
+                                    <p class="mt-2 text-xs text-muted">Caricando un file, il testo sopra viene sostituito dal contenuto del documento.</p>
+                                </div>
+                                <x-primary-button class="justify-center px-8">Salva documento privacy</x-primary-button>
+                            </div>
+
+                            @if ($privacyTemplateUpdatedAt)
+                                <p class="text-xs text-muted">Ultima modifica: {{ \Illuminate\Support\Carbon::parse($privacyTemplateUpdatedAt)->format('d/m/Y H:i') }}</p>
+                            @endif
+                        </form>
+                    </section>
+                    @endif
+
+                    @if ($section === 'backup')
+                    <section class="app-card overflow-hidden">
+                        <div class="border-b border-line bg-emerald-50 px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-emerald-100 bg-white text-emerald-700">
+                                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                                </span>
+                                <div>
+                                    <p class="text-xs font-bold uppercase text-muted">Backup</p>
+                                    <h3 class="mt-1 text-lg font-semibold text-gray-900">Backup ed esportazioni</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form method="POST" action="{{ route('settings.backup.update') }}" class="space-y-6 p-6">
+                            @csrf
+                            @method('PATCH')
+
+                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-muted">
+                                Queste impostazioni preparano il gestionale al salvataggio periodico di database, documenti generati e file caricati. L'esecuzione automatica verra collegata al comando di backup quando decidiamo la destinazione definitiva.
+                            </div>
+
+                            <div class="grid gap-4 md:grid-cols-3">
+                                <label class="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-gray-800 shadow-sm">
+                                    <input type="checkbox" name="backup_enabled" value="1" class="rounded border-line text-brand focus:ring-brand" @checked(old('backup_enabled', $backupSettings['backup_enabled']) == '1')>
+                                    Backup attivo
+                                </label>
+                                <div>
+                                    <x-input-label for="backup_frequency" value="Frequenza" />
+                                    <select id="backup_frequency" name="backup_frequency" class="app-field mt-1 block w-full">
+                                        <option value="daily" @selected(old('backup_frequency', $backupSettings['backup_frequency']) === 'daily')>Giornaliera</option>
+                                        <option value="weekly" @selected(old('backup_frequency', $backupSettings['backup_frequency']) === 'weekly')>Settimanale</option>
+                                        <option value="monthly" @selected(old('backup_frequency', $backupSettings['backup_frequency']) === 'monthly')>Mensile</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <x-input-label for="backup_time" value="Ora esecuzione" />
+                                    <x-text-input id="backup_time" name="backup_time" type="time" class="mt-1 block w-full" :value="old('backup_time', $backupSettings['backup_time'])" />
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4 md:grid-cols-3">
+                                <div>
+                                    <x-input-label for="backup_retention_days" value="Conservazione backup (giorni)" />
+                                    <x-text-input id="backup_retention_days" name="backup_retention_days" type="number" min="1" max="3650" step="1" class="mt-1 block w-full" :value="old('backup_retention_days', $backupSettings['backup_retention_days'])" />
+                                </div>
+                                <div>
+                                    <x-input-label for="backup_destination" value="Destinazione" />
+                                    <select id="backup_destination" name="backup_destination" class="app-field mt-1 block w-full">
+                                        <option value="local" @selected(old('backup_destination', $backupSettings['backup_destination']) === 'local')>Cartella locale</option>
+                                        <option value="external" @selected(old('backup_destination', $backupSettings['backup_destination']) === 'external')>Disco esterno / NAS</option>
+                                        <option value="cloud" @selected(old('backup_destination', $backupSettings['backup_destination']) === 'cloud')>Cloud</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <x-input-label for="backup_path" value="Percorso cartella backup" />
+                                    <x-text-input id="backup_path" name="backup_path" class="mt-1 block w-full" :value="old('backup_path', $backupSettings['backup_path'])" placeholder="storage/app/backups" />
+                                </div>
+                            </div>
+
+                            <section class="rounded-xl border border-line bg-white p-4">
+                                <h4 class="text-sm font-bold uppercase text-muted">Contenuto backup</h4>
+                                <div class="mt-4 grid gap-3 md:grid-cols-2">
+                                    <label class="flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-gray-800">
+                                        <input type="checkbox" name="backup_database" value="1" class="rounded border-line text-brand focus:ring-brand" @checked(old('backup_database', $backupSettings['backup_database']) == '1')>
+                                        Database gestionale
+                                    </label>
+                                    <label class="flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-gray-800">
+                                        <input type="checkbox" name="backup_uploaded_files" value="1" class="rounded border-line text-brand focus:ring-brand" @checked(old('backup_uploaded_files', $backupSettings['backup_uploaded_files']) == '1')>
+                                        File caricati
+                                    </label>
+                                    <label class="flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-gray-800">
+                                        <input type="checkbox" name="backup_generated_documents" value="1" class="rounded border-line text-brand focus:ring-brand" @checked(old('backup_generated_documents', $backupSettings['backup_generated_documents']) == '1')>
+                                        Documenti generati, fatture e consensi
+                                    </label>
+                                    <label class="flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-gray-800">
+                                        <input type="checkbox" name="backup_logs" value="1" class="rounded border-line text-brand focus:ring-brand" @checked(old('backup_logs', $backupSettings['backup_logs']) == '1')>
+                                        Log tecnici
+                                    </label>
+                                </div>
+                            </section>
+
+                            <section class="rounded-xl border border-line bg-white p-4">
+                                <h4 class="text-sm font-bold uppercase text-muted">Sicurezza e notifiche</h4>
+                                <div class="mt-4 grid gap-4 md:grid-cols-[260px_1fr]">
+                                    <label class="flex items-center gap-3 rounded-xl border border-line px-4 py-3 text-sm font-semibold text-gray-800">
+                                        <input type="checkbox" name="backup_encrypt" value="1" class="rounded border-line text-brand focus:ring-brand" @checked(old('backup_encrypt', $backupSettings['backup_encrypt']) == '1')>
+                                        Crittografia backup
+                                    </label>
+                                    <div>
+                                        <x-input-label for="backup_notify_email" value="Email notifica esito backup" />
+                                        <x-text-input id="backup_notify_email" name="backup_notify_email" type="email" class="mt-1 block w-full" :value="old('backup_notify_email', $backupSettings['backup_notify_email'])" placeholder="nome@email.it" />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <div>
+                                <x-input-label for="backup_notes" value="Note operative" />
+                                <textarea id="backup_notes" name="backup_notes" rows="4" class="mt-1 block w-full rounded-xl border-line bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-brand focus:ring-brand" placeholder="Esempio: controllare ogni venerdi che il file sia stato copiato anche su disco esterno.">{{ old('backup_notes', $backupSettings['backup_notes']) }}</textarea>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <x-primary-button>Salva impostazioni backup</x-primary-button>
+                            </div>
+                        </form>
+                    </section>
+                    @endif
                 </div>
 
                 <aside class="space-y-6">
@@ -892,22 +1050,10 @@
                             <a href="{{ route('settings.agenda') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'agenda' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni agenda</a>
                             <a href="{{ route('settings.invoices') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'invoices' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni fatture</a>
                             <a href="{{ route('settings.accounting') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'accounting' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni contabilita</a>
+                            <a href="{{ route('settings.privacy') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'privacy' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Impostazioni privacy</a>
                             <a href="{{ route('settings.users') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'users' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Utenti e password</a>
-                            <div class="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-500">Numerazione documenti</div>
-                            <div class="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-500">Consensi e privacy</div>
-                            <div class="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-500">Backup ed esportazioni</div>
+                            <a href="{{ route('settings.backup') }}" class="block rounded-md border px-4 py-3 text-sm font-medium {{ $section === 'backup' ? 'border-gray-200 bg-gray-50 text-gray-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50' }}">Backup ed esportazioni</a>
                         </div>
-                    </section>
-
-                    <section class="app-card p-6">
-                        <h3 class="font-semibold text-gray-900">Spunti prossimi</h3>
-                        <ul class="mt-4 space-y-3 text-sm text-gray-600">
-                            <li>Ruoli: amministratore, osteopata, segreteria.</li>
-                            <li>Template per fatture, ricevute e consensi.</li>
-                            <li>Stati seduta e promemoria appuntamenti.</li>
-                            <li>Campi clinici personalizzabili.</li>
-                            <li>Esportazione dati per commercialista.</li>
-                        </ul>
                     </section>
                 </aside>
             </div>

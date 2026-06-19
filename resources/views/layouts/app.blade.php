@@ -15,7 +15,10 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased bg-[#f7faf9] text-ink">
-        <div class="min-h-screen">
+        <div x-data="{ sidebarExpanded: localStorage.getItem('sidebar-expanded') === '1' }"
+             @sidebar-toggle.window="sidebarExpanded = $event.detail.expanded"
+             :class="sidebarExpanded ? 'md:pl-64' : 'md:pl-20'"
+             class="min-h-screen transition-all duration-200">
             @include('layouts.navigation')
 
             @isset($header)

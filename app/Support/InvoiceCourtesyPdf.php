@@ -14,11 +14,15 @@ class InvoiceCourtesyPdf
     private int $imageWidth = 0;
     private int $imageHeight = 0;
     private ?string $imageData = null;
+    private int $signatureWidth = 0;
+    private int $signatureHeight = 0;
+    private ?string $signatureData = null;
 
     public static function make(Patient $patient, Invoice $invoice, array $settings, array $amounts, array $paymentMethods): string
     {
         $pdf = new self();
         $pdf->loadLogo();
+        $pdf->loadSignature();
         $pdf->draw($patient, $invoice, $settings, $amounts, $paymentMethods);
 
         return $pdf->document();
@@ -28,13 +32,25 @@ class InvoiceCourtesyPdf
     {
         $path = public_path('images/logo-filipponi.png');
 
+        [$this->imageData, $this->imageWidth, $this->imageHeight] = $this->pngAsJpeg($path);
+    }
+
+    private function loadSignature(): void
+    {
+        $path = public_path('images/firma-filipponi-danilo.png');
+
+        [$this->signatureData, $this->signatureWidth, $this->signatureHeight] = $this->pngAsJpeg($path);
+    }
+
+    private function pngAsJpeg(string $path): array
+    {
         if (! function_exists('imagecreatefrompng') || ! is_file($path)) {
-            return;
+            return [null, 0, 0];
         }
 
         $image = @imagecreatefrompng($path);
         if (! $image) {
-            return;
+            return [null, 0, 0];
         }
 
         $canvas = imagecreatetruecolor(imagesx($image), imagesy($image));
@@ -44,12 +60,14 @@ class InvoiceCourtesyPdf
 
         ob_start();
         imagejpeg($canvas, null, 90);
-        $this->imageData = ob_get_clean() ?: null;
-        $this->imageWidth = imagesx($image);
-        $this->imageHeight = imagesy($image);
+        $data = ob_get_clean() ?: null;
+        $width = imagesx($image);
+        $height = imagesy($image);
 
         imagedestroy($image);
         imagedestroy($canvas);
+
+        return [$data, $width, $height];
     }
 
     private function draw(Patient $patient, Invoice $invoice, array $settings, array $amounts, array $paymentMethods): void
@@ -132,6 +150,8 @@ class InvoiceCourtesyPdf
         ];
         $this->textWrap($x + 18, $y + 438, implode(' ', $legal), $w - 36, 5.8, 9);
         $this->text($x + 18, $y + 478, 'COPIA DI CORTESIA', 9, true);
+        $this->text($x + $w - 82, $y + 456, 'Firma', 7, true);
+        $this->signatureFit($x + $w - 118, $y + 464, 98, 36);
     }
 
     private function document(): string
@@ -140,11 +160,12 @@ class InvoiceCourtesyPdf
         $objects = [
             '<< /Type /Catalog /Pages 2 0 R >>',
             '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '.self::PAGE_W.' '.self::PAGE_H.'] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> /XObject << /Logo 7 0 R >> >> /Contents 4 0 R >>',
+            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '.self::PAGE_W.' '.self::PAGE_H.'] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> /XObject << /Logo 7 0 R /Signature 8 0 R >> >> /Contents 4 0 R >>',
             "<< /Length ".strlen($content)." >>\nstream\n".$content."\nendstream",
             '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
             '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
-            $this->imageObject(),
+            $this->imageObject($this->imageData, $this->imageWidth, $this->imageHeight),
+            $this->imageObject($this->signatureData, $this->signatureWidth, $this->signatureHeight),
         ];
 
         $pdf = "%PDF-1.4\n";
@@ -163,13 +184,13 @@ class InvoiceCourtesyPdf
         return $pdf."trailer\n<< /Size ".(count($objects) + 1)." /Root 1 0 R >>\nstartxref\n".$xref."\n%%EOF";
     }
 
-    private function imageObject(): string
+    private function imageObject(?string $data, int $width, int $height): string
     {
-        if (! $this->imageData) {
+        if (! $data) {
             return '<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length 3 >>'."\nstream\n".str_repeat(chr(255), 3)."\nendstream";
         }
 
-        return '<< /Type /XObject /Subtype /Image /Width '.$this->imageWidth.' /Height '.$this->imageHeight.' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '.strlen($this->imageData)." >>\nstream\n".$this->imageData."\nendstream";
+        return '<< /Type /XObject /Subtype /Image /Width '.$width.' /Height '.$height.' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '.strlen($data)." >>\nstream\n".$data."\nendstream";
     }
 
     private function text(float $x, float $y, string $text, float $size = 8, bool $bold = false, string $align = 'L'): void
@@ -257,7 +278,12 @@ class InvoiceCourtesyPdf
 
     private function image(float $x, float $y, float $w, float $h): void
     {
-        $this->raw('q '.$this->n($w).' 0 0 '.$this->n($h).' '.$this->n($x).' '.$this->n(self::PAGE_H - $y - $h).' cm /Logo Do Q');
+        $this->drawImage('Logo', $x, $y, $w, $h);
+    }
+
+    private function drawImage(string $name, float $x, float $y, float $w, float $h): void
+    {
+        $this->raw('q '.$this->n($w).' 0 0 '.$this->n($h).' '.$this->n($x).' '.$this->n(self::PAGE_H - $y - $h).' cm /'.$name.' Do Q');
     }
 
     private function imageFit(float $x, float $y, float $maxW, float $maxH): void
@@ -273,6 +299,19 @@ class InvoiceCourtesyPdf
         $h = $this->imageHeight * $ratio;
 
         $this->image($x, $y + (($maxH - $h) / 2), $w, $h);
+    }
+
+    private function signatureFit(float $x, float $y, float $maxW, float $maxH): void
+    {
+        if ($this->signatureWidth <= 0 || $this->signatureHeight <= 0) {
+            return;
+        }
+
+        $ratio = min($maxW / $this->signatureWidth, $maxH / $this->signatureHeight);
+        $w = $this->signatureWidth * $ratio;
+        $h = $this->signatureHeight * $ratio;
+
+        $this->drawImage('Signature', $x + (($maxW - $w) / 2), $y + (($maxH - $h) / 2), $w, $h);
     }
 
     private function raw(string $command): void

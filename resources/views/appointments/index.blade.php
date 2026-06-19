@@ -33,6 +33,12 @@
                 'email' => $patient->email,
             ];
         })->values();
+        $syncPatientCalendarIds = collect($categories)
+            ->filter(fn ($category) => filter_var($category['sync_patients'] ?? false, FILTER_VALIDATE_BOOL))
+            ->pluck('google_calendar_id')
+            ->map(fn ($calendarId) => trim((string) $calendarId))
+            ->filter()
+            ->values();
     @endphp
 
     <x-slot name="header">
@@ -113,8 +119,15 @@
                                     @foreach ($dayEvents->take(4) as $appointment)
                                         @php
                                             $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                                            $unmatchedPatient = blank($appointment->patient_id)
+                                                && filled($appointment->google_event_id)
+                                                && filled($appointment->google_calendar_id)
+                                                && $syncPatientCalendarIds->contains(trim((string) $appointment->google_calendar_id));
                                         @endphp
-                                        <button type="button" data-appointment-modal="appointment-modal-{{ $appointment->id }}" class="block w-full rounded-lg border border-line bg-white p-2 text-left text-xs shadow-sm transition hover:bg-mist" style="border-left: 5px solid {{ $appointmentColor }};">
+                                        <button type="button" data-appointment-modal="appointment-modal-{{ $appointment->id }}" class="relative block w-full rounded-lg border border-line bg-white p-2 text-left text-xs shadow-sm transition hover:bg-mist" style="border-left: 5px solid {{ $appointmentColor }};">
+                                            @if ($unmatchedPatient)
+                                                <span title="Paziente non abbinato" style="position:absolute; top:4px; right:4px; z-index:80; display:block; width:12px; height:12px; border-radius:9999px; background:#dc2626; border:2px solid #ffffff; box-shadow:0 1px 4px rgba(15,23,42,.35);"></span>
+                                            @endif
                                             <span class="block truncate font-bold text-ink">
                                                 <span class="mr-1 inline-block h-2 w-2 rounded-full" style="background-color: {{ $appointmentColor }}"></span>
                                                 {{ $appointment->starts_at->format('H:i') }} {{ $appointment->title }}
@@ -178,6 +191,10 @@
                                             @endphp
                                             @php
                                                 $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                                                $unmatchedPatient = blank($appointment->patient_id)
+                                                    && filled($appointment->google_event_id)
+                                                    && filled($appointment->google_calendar_id)
+                                                    && $syncPatientCalendarIds->contains(trim((string) $appointment->google_calendar_id));
                                             @endphp
                                             <button
                                                 type="button"
@@ -190,6 +207,9 @@
                                                 class="absolute left-0 right-0 z-10 box-border cursor-grab overflow-hidden rounded-xl border border-line bg-white p-2 text-left shadow-sm transition hover:bg-mist active:cursor-grabbing"
                                                 style="top: {{ $eventTop + 2 }}px; width: 100%; min-height: {{ $eventHeight }}px; border-left: 5px solid {{ $appointmentColor }};"
                                             >
+                                                @if ($unmatchedPatient)
+                                                    <span title="Paziente non abbinato" style="position:absolute; top:5px; right:5px; z-index:80; display:block; width:13px; height:13px; border-radius:9999px; background:#dc2626; border:2px solid #ffffff; box-shadow:0 1px 5px rgba(15,23,42,.4);"></span>
+                                                @endif
                                                 <div class="flex items-start gap-2">
                                                     <span class="mt-1 h-3 w-3 shrink-0 rounded-full" style="background-color: {{ $appointmentColor }}"></span>
                                                     <div class="min-w-0">
@@ -377,6 +397,40 @@
                 results.classList.remove('hidden');
             };
 
+            const renderLinkPatientResults = (input) => {
+                const form = input.closest('form');
+                const results = form?.querySelector('[data-link-patient-results]');
+                const query = input.value.trim().toLowerCase();
+
+                if (!results) {
+                    return;
+                }
+
+                if (query.length < 2) {
+                    results.classList.add('hidden');
+                    results.innerHTML = '';
+                    return;
+                }
+
+                const matches = agendaPatients
+                    .filter((patient) => patient.name.toLowerCase().includes(query))
+                    .slice(0, 10);
+
+                if (matches.length === 0) {
+                    results.innerHTML = '<div class="px-3 py-2 text-sm font-semibold text-muted">Nessun paziente trovato</div>';
+                    results.classList.remove('hidden');
+                    return;
+                }
+
+                results.innerHTML = matches.map((patient) => `
+                    <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-mist" data-link-patient-result-id="${patient.id}">
+                        <span class="block font-bold text-ink">${escapeHtml(patient.name)}</span>
+                        <span class="block text-xs text-muted">${escapeHtml([patient.phone, patient.email].filter(Boolean).join(' - '))}</span>
+                    </button>
+                `).join('');
+                results.classList.remove('hidden');
+            };
+
             const closeAgendaModal = (modal) => {
                 if (!modal) {
                     return;
@@ -489,6 +543,63 @@
                 const dayColumn = event.target.closest('[data-agenda-day]');
                 const closer = event.target.closest('[data-close-appointment-modal], [data-close-agenda-modal], [data-close-patient-match-modal]');
                 const patientResult = event.target.closest('[data-patient-result-id]');
+                const toggleLinkPatient = event.target.closest('[data-toggle-link-patient]');
+                const linkPatientResult = event.target.closest('[data-link-patient-result-id]');
+
+                if (toggleLinkPatient) {
+                    const form = toggleLinkPatient.closest('form');
+                    const panel = form?.querySelector('[data-link-patient-panel]');
+                    const input = form?.querySelector('[data-link-patient-search]');
+
+                    panel?.classList.toggle('hidden');
+
+                    if (panel && !panel.classList.contains('hidden')) {
+                        input?.focus();
+                    }
+
+                    return;
+                }
+
+                if (linkPatientResult) {
+                    const form = linkPatientResult.closest('form');
+                    const patient = agendaPatients.find((item) => String(item.id) === String(linkPatientResult.dataset.linkPatientResultId));
+                    const patientId = form?.querySelector('[data-appointment-patient-id]');
+                    const titleInput = form?.querySelector('input[name="title"]');
+                    const label = form?.querySelector('[data-appointment-patient-label]');
+                    const input = form?.querySelector('[data-link-patient-search]');
+                    const results = form?.querySelector('[data-link-patient-results]');
+                    const folderLink = form?.querySelector('[data-patient-folder-link]');
+
+                    if (patientId) {
+                        patientId.value = linkPatientResult.dataset.linkPatientResultId || '';
+                    }
+
+                    if (titleInput && patient?.name) {
+                        titleInput.value = patient.name;
+                    }
+
+                    if (label && patient?.name) {
+                        label.textContent = patient.name;
+                        label.classList.remove('text-muted');
+                        label.classList.add('text-ink');
+                    }
+
+                    if (input && patient?.name) {
+                        input.value = patient.name;
+                    }
+
+                    if (results) {
+                        results.classList.add('hidden');
+                    }
+
+                    if (folderLink && patient?.id) {
+                        folderLink.href = `{{ url('/patients') }}/${patient.id}`;
+                        folderLink.classList.remove('hidden');
+                        folderLink.classList.add('inline-flex');
+                    }
+
+                    return;
+                }
 
                 if (patientResult) {
                     const modal = document.getElementById('new-appointment-modal');
@@ -562,6 +673,12 @@
                 if (patientSearch) {
                     renderPatientResults(patientSearch);
                 }
+
+                const linkPatientSearch = event.target.closest('[data-link-patient-search]');
+
+                if (linkPatientSearch) {
+                    renderLinkPatientResults(linkPatientSearch);
+                }
             });
 
             document.addEventListener('focusin', (event) => {
@@ -569,6 +686,12 @@
 
                 if (patientSearch) {
                     renderPatientResults(patientSearch);
+                }
+
+                const linkPatientSearch = event.target.closest('[data-link-patient-search]');
+
+                if (linkPatientSearch) {
+                    renderLinkPatientResults(linkPatientSearch);
                 }
             });
 

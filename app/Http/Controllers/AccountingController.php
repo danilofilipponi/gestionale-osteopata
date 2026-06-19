@@ -7,8 +7,10 @@ use App\Models\AccountingIncome;
 use App\Models\AccountingIncomeSummary;
 use App\Models\AccountingExpense;
 use App\Models\Setting;
+use App\Models\TreatmentSession;
 use App\Support\AccountingExpenseExcelImporter;
 use App\Support\AccountingIncomeExcelImporter;
+use App\Support\TreatmentSessionDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -28,7 +30,13 @@ class AccountingController extends Controller
         $incomeYears = AccountingIncome::where('user_id', $userId)->select('year')->distinct()->pluck('year')->map(fn ($year) => (int) $year);
         $summaryYears = AccountingIncomeSummary::where('user_id', $userId)->select('year')->distinct()->pluck('year')->map(fn ($year) => (int) $year);
         $expenseYears = AccountingExpense::where('user_id', $userId)->select('year')->distinct()->pluck('year')->map(fn ($year) => (int) $year);
-        $years = $invoiceYears->merge($incomeYears)->merge($summaryYears)->merge($expenseYears)->unique()->sortDesc()->values();
+        $sessionYears = TreatmentSession::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
+            ->selectRaw('YEAR(session_date) as year')
+            ->distinct()
+            ->pluck('year')
+            ->filter()
+            ->map(fn ($year) => (int) $year);
+        $years = $invoiceYears->merge($incomeYears)->merge($summaryYears)->merge($expenseYears)->merge($sessionYears)->unique()->sortDesc()->values();
 
         if ($years->isEmpty()) {
             $years = collect([(int) now()->year]);
@@ -61,6 +69,16 @@ class AccountingController extends Controller
             ->where('year', $selectedYear)
             ->get()
             ->keyBy('month');
+        $sessionsToInvoice = TreatmentSession::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
+            ->with('patient')
+            ->whereYear('session_date', $selectedYear)
+            ->where(function ($query) {
+                $query->where('paid', false)
+                    ->orWhereNull('paid');
+            })
+            ->whereNull('invoice_id')
+            ->get()
+            ->groupBy(fn (TreatmentSession $session) => (int) $session->session_date->format('n'));
 
         $monthLabels = [
             1 => 'Gennaio', 2 => 'Febbraio', 3 => 'Marzo', 4 => 'Aprile',
@@ -73,18 +91,21 @@ class AccountingController extends Controller
             7 => 'Lug', 8 => 'Ago', 9 => 'Set', 10 => 'Ott', 11 => 'Nov', 12 => 'Dic',
         ];
 
-        $monthlyRows = collect(range(1, 12))->map(function (int $month) use ($invoices, $expenses, $incomes, $incomeSummaries, $monthLabels, $shortMonthLabels) {
+        $monthlyRows = collect(range(1, 12))->map(function (int $month) use ($invoices, $expenses, $incomes, $incomeSummaries, $sessionsToInvoice, $monthLabels, $shortMonthLabels) {
             $monthInvoices = $invoices->get($month, collect());
             $monthExpenses = $expenses->get($month, collect());
             $monthIncomes = $incomes->get($month, collect());
+            $monthSessionsToInvoice = $sessionsToInvoice->get($month, collect());
             $summary = $incomeSummaries->get($month);
             $invoiced = $summary && $summary->invoiced_amount !== null
                 ? (float) $summary->invoiced_amount
                 : (float) $monthInvoices->sum('amount');
-            $grossIncome = $summary && $summary->gross_income_amount !== null
+            $manualToInvoice = $summary && $summary->gross_income_amount !== null
                 ? (float) $summary->gross_income_amount
                 : (float) $monthIncomes->sum('amount');
-            $totalIncome = $invoiced + $grossIncome;
+            $sessionsToInvoiceAmount = (float) $monthSessionsToInvoice->sum('fee');
+            $toInvoice = $manualToInvoice + $sessionsToInvoiceAmount;
+            $totalIncome = $invoiced + $toInvoice;
 
             return [
                 'month' => $month,
@@ -92,7 +113,10 @@ class AccountingController extends Controller
                 'short_label' => $shortMonthLabels[$month],
                 'invoice_count' => $monthInvoices->count(),
                 'invoiced' => $invoiced,
-                'gross_income' => $grossIncome,
+                'to_invoice' => $toInvoice,
+                'manual_to_invoice' => $manualToInvoice,
+                'sessions_to_invoice' => $sessionsToInvoiceAmount,
+                'to_invoice_sessions' => $monthSessionsToInvoice->sortBy('session_date')->values(),
                 'total_income' => $totalIncome,
                 'expenses' => (float) $monthExpenses->sum('amount'),
                 'expense_count' => $monthExpenses->count(),
@@ -105,19 +129,22 @@ class AccountingController extends Controller
         });
 
         $chartMetric = $request->query('chart_metric', 'total_income');
-        if (! in_array($chartMetric, ['invoiced', 'gross_income', 'total_income'], true)) {
+        if ($chartMetric === 'gross_income') {
+            $chartMetric = 'to_invoice';
+        }
+        if (! in_array($chartMetric, ['invoiced', 'to_invoice', 'total_income'], true)) {
             $chartMetric = 'total_income';
         }
 
         $chartLabels = [
             'invoiced' => 'Fatturato',
-            'gross_income' => 'Entrate lorde',
+            'to_invoice' => 'Da fatturare',
             'total_income' => 'Totale entrate',
         ];
         $maxRevenue = max(1, $monthlyRows->max($chartMetric));
 
         $yearInvoiced = (float) $monthlyRows->sum('invoiced');
-        $yearGrossIncome = (float) $monthlyRows->sum('gross_income');
+        $yearToInvoice = (float) $monthlyRows->sum('to_invoice');
         $yearTotalIncome = (float) $monthlyRows->sum('total_income');
         $taxSettings = $this->taxSettings();
         $taxBase = $yearInvoiced;
@@ -136,9 +163,10 @@ class AccountingController extends Controller
             'monthlyRows' => $monthlyRows,
             'maxRevenue' => $maxRevenue,
             'yearInvoiced' => $yearInvoiced,
-            'yearGrossIncome' => $yearGrossIncome,
+            'yearToInvoice' => $yearToInvoice,
             'yearTotalIncome' => $yearTotalIncome,
             'yearExpenses' => $monthlyRows->sum('expenses'),
+            'sessionRates' => TreatmentSessionDefaults::activeRates(),
             'chartMetric' => $chartMetric,
             'chartLabel' => $chartLabels[$chartMetric],
             'chartTotal' => (float) $monthlyRows->sum($chartMetric),
@@ -226,7 +254,7 @@ class AccountingController extends Controller
         $created = $isAnnualImport
             ? AccountingIncomeExcelImporter::importAnnualSummary($validated['annual_incomes_file'], $year)
             : AccountingIncomeExcelImporter::importGrossIncomeColumn($validated['gross_incomes_file'], $year);
-        $label = $isAnnualImport ? 'Entrate annuali' : 'Entrate lorde';
+        $label = $isAnnualImport ? 'Entrate annuali' : 'Da fatturare';
 
         return redirect()
             ->route('settings.accounting')

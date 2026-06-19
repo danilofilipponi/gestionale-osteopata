@@ -67,11 +67,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings/sessions', [SettingsController::class, 'sessions'])->name('settings.sessions');
     Route::get('/settings/agenda', [SettingsController::class, 'agenda'])->name('settings.agenda');
     Route::get('/settings/accounting', [SettingsController::class, 'accounting'])->name('settings.accounting');
+    Route::get('/settings/privacy', [SettingsController::class, 'privacy'])->name('settings.privacy');
+    Route::get('/settings/backup', [SettingsController::class, 'backup'])->name('settings.backup');
     Route::patch('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::patch('/settings/invoices', [SettingsController::class, 'updateInvoices'])->name('settings.invoices.update');
     Route::patch('/settings/sessions', [SettingsController::class, 'updateSessions'])->name('settings.sessions.update');
     Route::patch('/settings/agenda', [SettingsController::class, 'updateAgenda'])->name('settings.agenda.update');
     Route::patch('/settings/accounting', [SettingsController::class, 'updateAccounting'])->name('settings.accounting.update');
+    Route::patch('/settings/privacy', [SettingsController::class, 'updatePrivacy'])->name('settings.privacy.update');
+    Route::patch('/settings/backup', [SettingsController::class, 'updateBackup'])->name('settings.backup.update');
     Route::get('/settings/invoices/export-xml', [SettingsController::class, 'exportInvoicesXml'])->name('settings.invoices.export-xml');
     Route::post('/settings/invoices/import', [SettingsController::class, 'importInvoices'])->name('settings.invoices.import');
     Route::post('/settings/users', [SettingsController::class, 'storeUser'])->name('settings.users.store');

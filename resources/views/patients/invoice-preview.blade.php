@@ -18,6 +18,7 @@
                 ? \Illuminate\Support\Str::after($paymentMethods[$invoice->payment_method], ' - ')
                 : 'Non indicato';
             $logo = asset('images/logo-filipponi.png');
+            $signature = asset('images/firma-filipponi-danilo.png');
             $patientAddress = trim(collect([$patient->address, $patient->street_number])->filter()->join(' '));
             $patientCity = collect([$patient->postal_code, $patient->city, $patient->province])->filter()->join(' ');
         @endphp
@@ -34,7 +35,7 @@
         </div>
 
     @php
-        $invoiceCopy = function (string $copyLabel) use ($invoice, $patient, $settings, $amounts, $paymentLabel, $statusLabels, $logo, $patientAddress, $patientCity) {
+        $invoiceCopy = function (string $copyLabel) use ($invoice, $patient, $settings, $amounts, $paymentLabel, $statusLabels, $logo, $signature, $patientAddress, $patientCity) {
     @endphp
         <article class="invoice-copy">
             <header class="invoice-head">
@@ -103,6 +104,10 @@
                 <p>Regime fiscale forfettario ex art.1, commi 54 e segg., della Legge n. 190/2014 così come modificato dalla Legge n. 208/2015 e dalla Legge n. 145/2018.</p>
                 <p>Operazione in franchigia da IVA-non soggetta a ritenuta d'acconto.</p>
                 <p class="invoice-courtesy">COPIA DI CORTESIA</p>
+                <div class="invoice-signature">
+                    <p>Firma</p>
+                    <img src="{{ $signature }}" alt="Firma Danilo Filipponi">
+                </div>
             </footer>
         </article>
     @php
@@ -358,7 +363,9 @@
             font-size: 9.5px;
             line-height: 1.35;
             margin-top: 16px;
+            min-height: 112px;
             padding-top: 10px;
+            position: relative;
         }
 
         .invoice-courtesy {
@@ -368,6 +375,29 @@
             letter-spacing: .06em;
             margin-top: 6px;
             text-transform: uppercase;
+        }
+
+        .invoice-signature {
+            bottom: 2px;
+            position: absolute;
+            right: 0;
+            text-align: center;
+            width: 172px;
+        }
+
+        .invoice-signature p {
+            color: #1f3533;
+            font-size: 10px;
+            font-weight: 800;
+            margin: 0 0 2px;
+        }
+
+        .invoice-signature img {
+            display: block;
+            height: 42px;
+            margin-left: auto;
+            max-width: 172px;
+            object-fit: contain;
         }
 
         @media print {
@@ -451,6 +481,20 @@
 
             .invoice-footer {
                 font-size: 6.8pt;
+                min-height: 28mm;
+            }
+
+            .invoice-signature {
+                width: 34mm;
+            }
+
+            .invoice-signature p {
+                font-size: 7pt;
+            }
+
+            .invoice-signature img {
+                height: 10mm;
+                max-width: 34mm;
             }
         }
     </style>
