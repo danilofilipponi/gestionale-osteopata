@@ -16,7 +16,7 @@ class AdminUserSeeder extends Seeder
             ['email' => env('ADMIN_USER_EMAIL', 'danilo.filipponi@gmail.com')],
             [
                 'name' => env('ADMIN_USER_NAME', 'Danilo Filipponi'),
-                'password' => env('ADMIN_USER_PASSWORD', 'Zero1101985'),
+                'password' => env('ADMIN_USER_PASSWORD', 'change-this-password'),
             ],
         );
     }

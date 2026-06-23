@@ -49,7 +49,7 @@ class InvoiceIndexTest extends TestCase
             ->assertSee('Apri dettaglio fattura')
             ->assertDontSee('Progressivo')
             ->assertSee('Rossi Mario')
-            ->assertSee('EUR 40,00')
+            ->assertSee('€ 40,00')
             ->assertSee('Inviata')
             ->assertSee('XML scaricato')
             ->assertSee('Impostazioni fatture');
@@ -156,8 +156,8 @@ class InvoiceIndexTest extends TestCase
         $this->actingAs($user)
             ->get(route('invoices.index'))
             ->assertOk()
-            ->assertSee('EUR 120,00')
-            ->assertSee('EUR 80,00')
+            ->assertSee('€ 120,00')
+            ->assertSee('€ 80,00')
             ->assertSee('10/2026')
             ->assertDontSee('11/2026')
             ->assertSee('2025')
@@ -170,7 +170,7 @@ class InvoiceIndexTest extends TestCase
                 'summary_month' => 1,
             ]))
             ->assertOk()
-            ->assertSee('EUR 40,00')
+            ->assertSee('€ 40,00')
             ->assertSee('3/2025')
             ->assertSee('Fatture di Gennaio 2025')
             ->assertSee('Gennaio');
