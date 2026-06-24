@@ -37,7 +37,7 @@ class InvoiceCourtesyPdf
 
     private function loadSignature(): void
     {
-        $path = public_path('images/firma-filipponi-danilo.png');
+        $path = storage_path('app/private/firma-filipponi-danilo.png');
 
         [$this->signatureData, $this->signatureWidth, $this->signatureHeight] = $this->pngAsJpeg($path);
     }

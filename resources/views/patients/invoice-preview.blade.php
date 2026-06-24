@@ -18,7 +18,10 @@
                 ? \Illuminate\Support\Str::after($paymentMethods[$invoice->payment_method], ' - ')
                 : 'Non indicato';
             $logo = asset('images/logo-filipponi.png');
-            $signature = asset('images/firma-filipponi-danilo.png');
+            $signaturePath = storage_path('app/private/firma-filipponi-danilo.png');
+            $signature = is_file($signaturePath)
+                ? 'data:image/png;base64,'.base64_encode(file_get_contents($signaturePath))
+                : null;
             $patientAddress = trim(collect([$patient->address, $patient->street_number])->filter()->join(' '));
             $patientCity = collect([$patient->postal_code, $patient->city, $patient->province])->filter()->join(' ');
         @endphp
@@ -104,10 +107,12 @@
                 <p>Regime fiscale forfettario ex art.1, commi 54 e segg., della Legge n. 190/2014 così come modificato dalla Legge n. 208/2015 e dalla Legge n. 145/2018.</p>
                 <p>Operazione in franchigia da IVA-non soggetta a ritenuta d'acconto.</p>
                 <p class="invoice-courtesy">COPIA DI CORTESIA</p>
-                <div class="invoice-signature">
-                    <p>Firma</p>
-                    <img src="{{ $signature }}" alt="Firma Danilo Filipponi">
-                </div>
+                @if ($signature)
+                    <div class="invoice-signature">
+                        <p>Firma</p>
+                        <img src="{{ $signature }}" alt="Firma Danilo Filipponi">
+                    </div>
+                @endif
             </footer>
         </article>
     @php

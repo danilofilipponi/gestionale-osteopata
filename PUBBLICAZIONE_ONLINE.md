@@ -133,7 +133,23 @@ Configurare:
 - copia esterna alla VPS;
 - prova periodica di ripristino.
 
-## 9. Controlli finali post-deploy
+## 9. File privati da caricare a mano
+
+La firma usata nelle fatture non deve stare nella cartella pubblica del sito e non deve essere caricata su GitHub.
+
+Sul server va caricata qui:
+
+```text
+storage/app/private/firma-filipponi-danilo.png
+```
+
+Il logo resta invece pubblico:
+
+```text
+public/images/logo-filipponi.png
+```
+
+## 10. Controlli finali post-deploy
 
 Dal server:
 
@@ -157,7 +173,7 @@ Dal browser:
 - contabilita;
 - backup manuale.
 
-## 10. Dati iniziali
+## 11. Dati iniziali
 
 Dopo la prima pubblicazione:
 
