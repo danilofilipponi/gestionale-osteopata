@@ -60,6 +60,9 @@ Aruba Cloud Backup, storage esterno, o altra destinazione cifrata
 - `.env.production.example`
 - `DEPLOY.md`
 - `PREPRODUZIONE.md`
+- `PUBBLICAZIONE_ONLINE.md`
+
+`PUBBLICAZIONE_ONLINE.md` contiene la procedura rapida da seguire appena Aruba comunica IP e accessi della VPS.
 
 ## Prima di pubblicare
 
