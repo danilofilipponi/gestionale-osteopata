@@ -945,13 +945,27 @@
                             </div>
                         </div>
 
+                        <div class="space-y-4 p-6 pb-0">
+                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-muted">
+                                Queste impostazioni regolano il salvataggio periodico di database, documenti generati e file caricati. Il backup automatico viene eseguito dallo scheduler Laravel quando e attivo.
+                            </div>
+
+                            <form method="POST" action="{{ route('settings.backup.run') }}" class="rounded-xl border border-line bg-white p-4">
+                                @csrf
+                                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div>
+                                        <p class="text-xs font-bold uppercase text-muted">Backup manuale</p>
+                                        <h4 class="mt-1 font-semibold text-gray-900">Crea subito un backup</h4>
+                                        <p class="mt-1 text-sm text-muted">Usa le impostazioni salvate qui sotto e crea un file ZIP nella cartella indicata.</p>
+                                    </div>
+                                    <x-primary-button class="justify-center px-6">Esegui backup ora</x-primary-button>
+                                </div>
+                            </form>
+                        </div>
+
                         <form method="POST" action="{{ route('settings.backup.update') }}" class="space-y-6 p-6">
                             @csrf
                             @method('PATCH')
-
-                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-muted">
-                                Queste impostazioni preparano il gestionale al salvataggio periodico di database, documenti generati e file caricati. L'esecuzione automatica verra collegata al comando di backup quando decidiamo la destinazione definitiva.
-                            </div>
 
                             <div class="grid gap-4 md:grid-cols-3">
                                 <label class="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-gray-800 shadow-sm">

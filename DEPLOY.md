@@ -199,6 +199,14 @@ Regola minima:
 
 I dati sanitari non devono avere come unica copia il disco della VPS.
 
+Il gestionale ha un comando interno per creare un backup locale in base alle impostazioni scelte nella pagina Backup:
+
+```bash
+php artisan backup:run
+```
+
+Lo scheduler Laravel lo esegue automaticamente se il backup e attivo nelle impostazioni. In produzione va comunque prevista una copia esterna al server, perche il backup locale protegge dagli errori applicativi ma non dalla perdita della VPS.
+
 ## Permessi Laravel
 
 Il server web deve poter scrivere in:

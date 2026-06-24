@@ -87,5 +87,15 @@ Valore: IP VPS
 2. Attivare SSL.
 3. Collegare Google Calendar con il nuovo redirect.
 4. Configurare cron Laravel.
-5. Configurare backup.
+5. Configurare backup dalla pagina Impostazioni > Backup.
 6. Fare prova completa con un paziente, una seduta, una fattura e un PDF.
+
+## Prova backup
+
+Prima della pubblicazione verificare che il comando crei correttamente lo ZIP locale:
+
+```bash
+php artisan backup:run
+```
+
+Il backup locale e solo una prima protezione: per i dati sanitari serve anche una copia esterna alla VPS.

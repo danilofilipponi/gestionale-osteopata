@@ -76,6 +76,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/settings/accounting', [SettingsController::class, 'updateAccounting'])->name('settings.accounting.update');
     Route::patch('/settings/privacy', [SettingsController::class, 'updatePrivacy'])->name('settings.privacy.update');
     Route::patch('/settings/backup', [SettingsController::class, 'updateBackup'])->name('settings.backup.update');
+    Route::post('/settings/backup/run', [SettingsController::class, 'runBackup'])->name('settings.backup.run');
     Route::get('/settings/invoices/export-xml', [SettingsController::class, 'exportInvoicesXml'])->name('settings.invoices.export-xml');
     Route::post('/settings/invoices/import', [SettingsController::class, 'importInvoices'])->name('settings.invoices.import');
     Route::post('/settings/users', [SettingsController::class, 'storeUser'])->name('settings.users.store');

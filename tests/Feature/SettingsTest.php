@@ -8,6 +8,7 @@ use App\Models\Patient;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 use ZipArchive;
@@ -340,6 +341,32 @@ class SettingsTest extends TestCase
             ->assertSee('Ultima settimana')
             ->assertSee('Ultimo mese')
             ->assertSee('Tutti');
+    }
+
+    public function test_backup_can_be_run_from_settings(): void
+    {
+        $user = User::factory()->create();
+        $backupPath = storage_path('framework/testing/backups');
+
+        File::deleteDirectory($backupPath);
+
+        Setting::setValue('backup_path', $backupPath, 'backup');
+        Setting::setValue('backup_database', '1', 'backup');
+        Setting::setValue('backup_uploaded_files', '0', 'backup');
+        Setting::setValue('backup_generated_documents', '0', 'backup');
+        Setting::setValue('backup_logs', '0', 'backup');
+
+        $this->actingAs($user)
+            ->post(route('settings.backup.run'))
+            ->assertRedirect(route('settings.backup'))
+            ->assertSessionHas('status');
+
+        $files = File::files($backupPath);
+
+        $this->assertCount(1, $files);
+        $this->assertSame('zip', $files[0]->getExtension());
+
+        File::deleteDirectory($backupPath);
     }
 
     public function test_users_can_be_created_from_settings(): void

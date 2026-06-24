@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Support\InvoiceExcelImporter;
 use App\Support\InvoiceXmlExporter;
+use App\Support\ApplicationBackup;
 use App\Support\GoogleCalendarClient;
 use App\Support\PrivacyConsentTemplate;
 use App\Support\TreatmentSessionDefaults;
@@ -238,6 +239,26 @@ class SettingsController extends Controller
         return redirect()
             ->route('settings.backup')
             ->with('status', 'Impostazioni backup aggiornate.');
+    }
+
+    public function runBackup()
+    {
+        $result = ApplicationBackup::run();
+
+        $message = 'Backup creato: '.$result['filename'].' - '
+            .number_format($result['size'] / 1024 / 1024, 2, ',', '.').' MB';
+
+        if ($result['included'] !== []) {
+            $message .= ' - contenuto: '.implode(', ', $result['included']);
+        }
+
+        if ($result['warnings'] !== []) {
+            $message .= ' - attenzione: '.implode(' ', $result['warnings']);
+        }
+
+        return redirect()
+            ->route('settings.backup')
+            ->with('status', $message);
     }
 
     public function updateInvoices(Request $request)

@@ -2,7 +2,9 @@
 
 use App\Models\Appointment;
 use App\Models\Invoice;
+use App\Models\Setting;
 use App\Models\TreatmentSession;
+use App\Support\ApplicationBackup;
 use App\Support\GoogleCalendarClient;
 use App\Support\TreatmentSessionAutomation;
 use Illuminate\Foundation\Inspiring;
@@ -163,4 +165,37 @@ Artisan::command('treatment-sessions:link-invoices', function () {
     $this->info("Sedute collegate a fatture: {$linked}");
 })->purpose('Collega sedute esistenti alle fatture dello stesso giorno.');
 
+Artisan::command('backup:run', function () {
+    $result = ApplicationBackup::run();
+
+    $this->info('Backup creato: '.$result['filename']);
+    $this->line('Percorso: '.$result['path']);
+    $this->line('Dimensione: '.number_format($result['size'] / 1024 / 1024, 2, ',', '.').' MB');
+    $this->line('Contenuto: '.implode(', ', $result['included'] ?: ['nessuna sezione selezionata']));
+
+    if ($result['deleted_old'] > 0) {
+        $this->line('Backup vecchi eliminati: '.$result['deleted_old']);
+    }
+
+    foreach ($result['warnings'] as $warning) {
+        $this->warn($warning);
+    }
+})->purpose('Crea un backup locale del gestionale.');
+
 Schedule::command('treatment-sessions:auto-create')->everyMinute()->withoutOverlapping();
+
+try {
+    if (Setting::getValue('backup_enabled', '0') === '1') {
+        $backupTime = Setting::getValue('backup_time', '22:00') ?: '22:00';
+        $backupFrequency = Setting::getValue('backup_frequency', 'daily') ?: 'daily';
+        $backupSchedule = Schedule::command('backup:run')->withoutOverlapping();
+
+        match ($backupFrequency) {
+            'weekly' => $backupSchedule->weeklyOn(1, $backupTime),
+            'monthly' => $backupSchedule->monthlyOn(1, $backupTime),
+            default => $backupSchedule->dailyAt($backupTime),
+        };
+    }
+} catch (Throwable) {
+    // Durante installazione o migrazioni la tabella settings potrebbe non esistere ancora.
+}
