@@ -36,6 +36,8 @@ class AuthenticatedSessionController extends Controller
             report($exception);
         }
 
+        $request->session()->put('show_patient_match_modal', true);
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

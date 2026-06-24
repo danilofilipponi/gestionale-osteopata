@@ -709,7 +709,7 @@
             });
 
             document.addEventListener('DOMContentLoaded', () => {
-                const patientMatchModal = document.getElementById('patient-match-modal');
+                const patientMatchModal = document.querySelector('[data-auto-open-patient-match]');
 
                 if (patientMatchModal) {
                     openAgendaModal(patientMatchModal);

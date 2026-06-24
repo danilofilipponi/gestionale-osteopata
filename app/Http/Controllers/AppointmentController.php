@@ -64,6 +64,7 @@ class AppointmentController extends Controller
             'appointmentsByDate' => $appointments->groupBy(fn (Appointment $appointment) => $appointment->starts_at->toDateString()),
             'statusLabels' => $this->statusLabels(),
             'pendingPatientMatches' => $pendingPatientMatches,
+            'showPatientMatchModal' => (bool) $request->session()->pull('show_patient_match_modal', false),
         ]);
     }
 

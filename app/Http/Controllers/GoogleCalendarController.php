@@ -399,11 +399,21 @@ class GoogleCalendarController extends Controller
             ->sortByDesc('score')
             ->values();
 
-        if ($matches->count() === 1 && $matches->first()['score'] >= 80) {
-            return ['patient' => $matches->first()['patient'], 'status' => 'matched'];
+        $perfectMatches = $matches->where('score', 100)->values();
+
+        if ($perfectMatches->count() === 1 && $this->duplicatePatientCount($perfectMatches->first()['patient']) === 1) {
+            return ['patient' => $perfectMatches->first()['patient'], 'status' => 'matched'];
         }
 
         return ['patient' => null, 'status' => 'pending'];
+    }
+
+    private function duplicatePatientCount(Patient $patient): int
+    {
+        return Patient::where('user_id', $patient->user_id)
+            ->whereRaw('LOWER(TRIM(first_name)) = ?', [strtolower(trim((string) $patient->first_name))])
+            ->whereRaw('LOWER(TRIM(last_name)) = ?', [strtolower(trim((string) $patient->last_name))])
+            ->count();
     }
 
     private function shouldCheckPatientMatch(Carbon $startsAt): bool

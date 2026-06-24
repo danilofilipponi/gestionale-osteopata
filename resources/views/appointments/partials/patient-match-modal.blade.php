@@ -1,5 +1,5 @@
 @if ($pendingPatientMatches->isNotEmpty())
-    <div id="patient-match-modal" class="fixed inset-0 hidden items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6" style="z-index: 2147483647;" aria-hidden="true">
+    <div id="patient-match-modal"{{ ! empty($showPatientMatchModal) ? ' data-auto-open-patient-match' : '' }} class="fixed inset-0 hidden items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6" style="z-index: 2147483647;" aria-hidden="true">
         <div class="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border-2 border-line bg-white shadow-2xl">
             <div class="flex flex-wrap items-start justify-between gap-4 border-b border-line bg-mist px-5 py-4">
                 <div>

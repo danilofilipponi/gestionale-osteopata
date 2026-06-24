@@ -7,7 +7,9 @@ use App\Models\Patient;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use ReflectionClass;
 use Tests\TestCase;
 
 class AppointmentTest extends TestCase
@@ -105,6 +107,38 @@ class AppointmentTest extends TestCase
             ->assertSee('value="personal"', false);
     }
 
+    public function test_patient_match_modal_auto_opens_only_when_session_requests_it(): void
+    {
+        $user = User::factory()->create();
+
+        Appointment::create([
+            'title' => 'Rossi Mario',
+            'starts_at' => now()->addDay()->setTime(9, 0),
+            'ends_at' => now()->addDay()->setTime(9, 45),
+            'type' => 'visit',
+            'status' => 'scheduled',
+            'google_event_id' => 'google-event-1',
+            'patient_match_status' => 'pending',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('appointments.index'))
+            ->assertOk()
+            ->assertSee('id="patient-match-modal"', false)
+            ->assertDontSee('<div id="patient-match-modal" data-auto-open-patient-match', false);
+
+        $this->actingAs($user)
+            ->withSession(['show_patient_match_modal' => true])
+            ->get(route('appointments.index'))
+            ->assertOk()
+            ->assertSee('<div id="patient-match-modal" data-auto-open-patient-match', false);
+
+        $this->actingAs($user)
+            ->get(route('appointments.index'))
+            ->assertOk()
+            ->assertDontSee('<div id="patient-match-modal" data-auto-open-patient-match', false);
+    }
+
     public function test_google_calendar_sync_requires_reconnect_when_token_is_revoked(): void
     {
         config([
@@ -135,6 +169,72 @@ class AppointmentTest extends TestCase
 
         $this->assertNull(Setting::getValue('google_calendar_access_token'));
         $this->assertNull(Setting::getValue('google_calendar_refresh_token'));
+    }
+
+    public function test_google_patient_matching_only_auto_matches_unique_perfect_match(): void
+    {
+        $user = User::factory()->create();
+        Auth::login($user);
+
+        $patient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+
+        $result = $this->callGooglePatientMatcher('Rossi Mario');
+
+        $this->assertSame('matched', $result['status']);
+        $this->assertTrue($patient->is($result['patient']));
+    }
+
+    public function test_google_patient_matching_keeps_duplicates_pending_even_with_perfect_match(): void
+    {
+        $user = User::factory()->create();
+        Auth::login($user);
+
+        Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+        Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+            'phone' => '3331234567',
+        ]);
+
+        $result = $this->callGooglePatientMatcher('Rossi Mario');
+
+        $this->assertSame('pending', $result['status']);
+        $this->assertNull($result['patient']);
+    }
+
+    public function test_google_patient_matching_keeps_partial_matches_pending(): void
+    {
+        $user = User::factory()->create();
+        Auth::login($user);
+
+        Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+
+        $result = $this->callGooglePatientMatcher('Rossi');
+
+        $this->assertSame('pending', $result['status']);
+        $this->assertNull($result['patient']);
+    }
+
+    private function callGooglePatientMatcher(string $title): array
+    {
+        $controller = app(\App\Http\Controllers\GoogleCalendarController::class);
+        $method = (new ReflectionClass($controller))->getMethod('matchPatient');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller, $title);
     }
 
 }
