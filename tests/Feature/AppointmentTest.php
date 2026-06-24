@@ -7,6 +7,7 @@ use App\Models\Patient;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class AppointmentTest extends TestCase
@@ -102,6 +103,38 @@ class AppointmentTest extends TestCase
             ->get(route('appointments.index'))
             ->assertOk()
             ->assertSee('value="personal"', false);
+    }
+
+    public function test_google_calendar_sync_requires_reconnect_when_token_is_revoked(): void
+    {
+        config([
+            'services.google_calendar.client_id' => 'client-id',
+            'services.google_calendar.client_secret' => 'client-secret',
+            'services.google_calendar.redirect_uri' => 'http://127.0.0.1:8000/google/calendar/callback',
+        ]);
+
+        Http::fake([
+            'https://oauth2.googleapis.com/token' => Http::response([
+                'error' => 'invalid_grant',
+                'error_description' => 'Token has been expired or revoked.',
+            ], 400),
+        ]);
+
+        $user = User::factory()->create();
+        Setting::setValue('google_calendar_enabled', '1', 'agenda');
+        Setting::setValue('google_calendar_sync_mode', 'read', 'agenda');
+        Setting::setValue('google_calendar_access_token', 'expired-token', 'agenda');
+        Setting::setValue('google_calendar_refresh_token', 'revoked-refresh-token', 'agenda');
+        Setting::setValue('google_calendar_token_expires_at', now()->subHour()->toDateTimeString(), 'agenda');
+        Setting::setValue('google_calendar_selected_ids', json_encode(['calendar-1']), 'agenda');
+
+        $this->actingAs($user)
+            ->post(route('google.calendar.sync'), ['sync_year' => 2026])
+            ->assertRedirect(route('settings.agenda'))
+            ->assertSessionHas('status', fn (string $message) => str_contains($message, 'nuovo collegamento'));
+
+        $this->assertNull(Setting::getValue('google_calendar_access_token'));
+        $this->assertNull(Setting::getValue('google_calendar_refresh_token'));
     }
 
 }

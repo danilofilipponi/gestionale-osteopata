@@ -58,6 +58,12 @@ class GoogleCalendarController extends Controller
         $year = (int) ($validated['sync_year'] ?? now()->year);
         $result = $this->syncYear($year, true);
 
+        if ($result['reconnect_required'] ?? false) {
+            return redirect()
+                ->route('settings.agenda')
+                ->with('status', 'Google Calendar richiede un nuovo collegamento: il token risulta scaduto o revocato. Clicca su "Collega Google Calendar" e poi rilancia la sincronizzazione.');
+        }
+
         return redirect()
             ->route('settings.agenda')
             ->with('status', "Sincronizzazione {$year} completata: {$result['exported']} inviati a Google, {$result['imported']} importati, {$result['updated']} aggiornati, {$result['deleted']} eliminati, {$result['skipped']} gia presenti, {$result['failed']} non sincronizzati.");
@@ -98,6 +104,8 @@ class GoogleCalendarController extends Controller
         $skipped = 0;
         $deleted = 0;
         $failed = 0;
+        $reconnectRequired = false;
+        $errors = [];
 
         if ($pushLocalAppointments && in_array(GoogleCalendarClient::syncMode(), ['write', 'two_way'], true)) {
             foreach ($appointments as $appointment) {
@@ -112,13 +120,21 @@ class GoogleCalendarController extends Controller
                     }
 
                     $exported++;
-                } catch (Throwable) {
+                } catch (Throwable $exception) {
+                    if (GoogleCalendarClient::authorizationFailed($exception)) {
+                        GoogleCalendarClient::disconnect();
+                        $reconnectRequired = true;
+                        $errors[] = 'Token Google scaduto o revocato durante invio appuntamenti.';
+                        break;
+                    }
+
+                    report($exception);
                     $failed++;
                 }
             }
         }
 
-        if (in_array(GoogleCalendarClient::syncMode(), ['read', 'two_way'], true)) {
+        if (! $reconnectRequired && in_array(GoogleCalendarClient::syncMode(), ['read', 'two_way'], true)) {
             $selectedCalendarIds = GoogleCalendarClient::selectedCalendarIds();
 
             foreach ($selectedCalendarIds as $calendarId) {
@@ -139,13 +155,26 @@ class GoogleCalendarController extends Controller
                     }
 
                     $deleted += $this->deleteMissingGoogleEvents($from, $to, $calendarId, $googleEventIds, count($selectedCalendarIds) === 1);
-                } catch (Throwable) {
+                } catch (Throwable $exception) {
+                    if (GoogleCalendarClient::authorizationFailed($exception)) {
+                        GoogleCalendarClient::disconnect();
+                        $reconnectRequired = true;
+                        $errors[] = 'Token Google scaduto o revocato durante lettura calendari.';
+                        break;
+                    }
+
+                    report($exception);
+                    $errors[] = $calendarId.': '.$exception->getMessage();
                     $failed++;
                 }
             }
         }
 
-        return compact('exported', 'imported', 'updated', 'skipped', 'deleted', 'failed');
+        return compact('exported', 'imported', 'updated', 'skipped', 'deleted', 'failed')
+            + [
+                'reconnect_required' => $reconnectRequired,
+                'errors' => $errors,
+            ];
     }
 
     public function refreshCalendars()
@@ -253,12 +282,14 @@ class GoogleCalendarController extends Controller
 
     private function findExistingAppointment(array $payload, string $googleEventId, string $calendarId): ?Appointment
     {
-        return Appointment::where('google_event_id', $googleEventId)
-            ->where(function ($query) use ($calendarId) {
-                $query->where('google_calendar_id', $calendarId)
-                    ->orWhereNull('google_calendar_id');
-            })
-            ->first()
+        $byEventId = Appointment::where('google_event_id', $googleEventId)->get();
+
+        if ($byEventId->count() === 1) {
+            return $byEventId->first();
+        }
+
+        return $byEventId
+            ->first(fn (Appointment $appointment) => in_array($appointment->google_calendar_id, [$calendarId, null], true))
             ?: Appointment::where('title', $payload['title'])
                 ->where('starts_at', $payload['starts_at'])
                 ->where('ends_at', $payload['ends_at'])

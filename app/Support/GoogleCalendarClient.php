@@ -4,10 +4,12 @@ namespace App\Support;
 
 use App\Models\Appointment;
 use App\Models\Setting;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 class GoogleCalendarClient
 {
@@ -143,18 +145,27 @@ class GoogleCalendarClient
             return [];
         }
 
-        $response = Http::timeout(30)->withToken(self::accessToken())
-            ->get(self::CALENDAR_URL.'/'.rawurlencode($calendarId ?: self::calendarId()).'/events', [
+        $events = [];
+        $pageToken = null;
+
+        do {
+            $response = Http::timeout(30)->withToken(self::accessToken())
+            ->get(self::CALENDAR_URL.'/'.rawurlencode($calendarId ?: self::calendarId()).'/events', array_filter([
                 'timeMin' => $from->copy()->startOfDay()->toRfc3339String(),
                 'timeMax' => $to->copy()->endOfDay()->toRfc3339String(),
                 'singleEvents' => 'true',
                 'orderBy' => 'startTime',
                 'maxResults' => 2500,
-            ])
+                'pageToken' => $pageToken,
+            ]))
             ->throw()
             ->json();
 
-        return $response['items'] ?? [];
+            $events = array_merge($events, $response['items'] ?? []);
+            $pageToken = $response['nextPageToken'] ?? null;
+        } while ($pageToken);
+
+        return $events;
     }
 
     public static function refreshCalendarList(): array
@@ -246,6 +257,17 @@ class GoogleCalendarClient
             'connected' => self::connected(),
             'connected_at' => Setting::getValue('google_calendar_connected_at'),
         ];
+    }
+
+    public static function authorizationFailed(Throwable $exception): bool
+    {
+        if (! $exception instanceof RequestException || ! $exception->response) {
+            return false;
+        }
+
+        $body = $exception->response->body();
+
+        return $exception->response->status() === 400 && str_contains($body, 'invalid_grant');
     }
 
     public static function syncMode(): string
