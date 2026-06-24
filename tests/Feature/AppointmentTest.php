@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Appointment;
 use App\Models\Patient;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -74,4 +75,33 @@ class AppointmentTest extends TestCase
             'ends_at' => '2026-06-06 10:30:00',
         ]);
     }
+
+    public function test_personal_category_is_available_when_saved_categories_do_not_include_it(): void
+    {
+        $user = User::factory()->create();
+
+        Setting::setValue('agenda_categories', json_encode([
+            [
+                'key' => 'Cagli',
+                'label' => 'Visita Cagli',
+                'color' => '#111111',
+                'google_calendar_id' => 'calendar-cagli',
+                'sync_patients' => true,
+            ],
+        ]), 'agenda');
+
+        Appointment::create([
+            'title' => 'Evento personale',
+            'starts_at' => '2026-06-06 09:00:00',
+            'ends_at' => '2026-06-06 10:00:00',
+            'type' => 'personal',
+            'status' => 'scheduled',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('appointments.index'))
+            ->assertOk()
+            ->assertSee('value="personal"', false);
+    }
+
 }

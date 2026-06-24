@@ -81,6 +81,55 @@ class ApplicationBackup
         ];
     }
 
+    public static function restore(string $path, bool $restoreDatabase, bool $restoreFiles): array
+    {
+        if (! class_exists(ZipArchive::class)) {
+            throw new RuntimeException('Estensione ZIP non disponibile: il backup non puo essere letto.');
+        }
+
+        if (! $restoreDatabase && ! $restoreFiles) {
+            throw new RuntimeException('Seleziona almeno una parte da ripristinare.');
+        }
+
+        $zip = new ZipArchive();
+
+        if ($zip->open($path) !== true) {
+            throw new RuntimeException('Il file caricato non e uno ZIP leggibile.');
+        }
+
+        if ($zip->getFromName('backup-manifest.json') === false) {
+            $zip->close();
+
+            throw new RuntimeException('Questo file non sembra un backup creato dal gestionale.');
+        }
+
+        $restored = [];
+
+        if ($restoreDatabase) {
+            $sql = $zip->getFromName('database/database.sql');
+
+            if ($sql === false || trim($sql) === '') {
+                $zip->close();
+
+                throw new RuntimeException('Nel backup non e presente il database.');
+            }
+
+            self::restoreDatabase($sql);
+            $restored[] = 'database';
+        }
+
+        if ($restoreFiles) {
+            $files = self::restoreFiles($zip);
+            $restored[] = 'file e documenti: '.$files;
+        }
+
+        $zip->close();
+
+        return [
+            'restored' => $restored,
+        ];
+    }
+
     private static function settings(): array
     {
         return [
@@ -182,6 +231,131 @@ class ApplicationBackup
         }
 
         return implode("\n", $lines)."\n";
+    }
+
+    private static function restoreDatabase(string $sql): void
+    {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys=OFF');
+        }
+
+        foreach (self::splitSqlStatements($sql) as $statement) {
+            DB::unprepared($statement);
+        }
+
+        if ($driver === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        } elseif ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys=ON');
+        }
+    }
+
+    private static function splitSqlStatements(string $sql): array
+    {
+        $statements = [];
+        $buffer = '';
+        $quote = null;
+        $escaped = false;
+        $length = strlen($sql);
+
+        for ($index = 0; $index < $length; $index++) {
+            $char = $sql[$index];
+            $next = $sql[$index + 1] ?? null;
+
+            if ($quote === null && $char === '-' && $next === '-') {
+                while ($index < $length && ! in_array($sql[$index], ["\n", "\r"], true)) {
+                    $index++;
+                }
+
+                continue;
+            }
+
+            $buffer .= $char;
+
+            if ($quote !== null) {
+                if ($escaped) {
+                    $escaped = false;
+                } elseif ($char === '\\') {
+                    $escaped = true;
+                } elseif ($char === $quote) {
+                    $quote = null;
+                }
+
+                continue;
+            }
+
+            if (in_array($char, ["'", '"', '`'], true)) {
+                $quote = $char;
+
+                continue;
+            }
+
+            if ($char === ';') {
+                $statement = trim(substr($buffer, 0, -1));
+
+                if ($statement !== '') {
+                    $statements[] = $statement;
+                }
+
+                $buffer = '';
+            }
+        }
+
+        $statement = trim($buffer);
+
+        if ($statement !== '') {
+            $statements[] = $statement;
+        }
+
+        return $statements;
+    }
+
+    private static function restoreFiles(ZipArchive $zip): int
+    {
+        $restored = 0;
+
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $name = $zip->getNameIndex($index);
+
+            if (! $name || str_ends_with($name, '/')) {
+                continue;
+            }
+
+            if (! str_starts_with($name, 'storage/app/public/') && ! str_starts_with($name, 'storage/app/private/')) {
+                continue;
+            }
+
+            $destination = self::restoreFileDestination($name);
+            File::ensureDirectoryExists(dirname($destination));
+
+            $stream = $zip->getStream($name);
+
+            if (! $stream) {
+                continue;
+            }
+
+            File::put($destination, stream_get_contents($stream));
+            fclose($stream);
+            $restored++;
+        }
+
+        return $restored;
+    }
+
+    private static function restoreFileDestination(string $zipName): string
+    {
+        $relative = str_replace('\\', '/', substr($zipName, strlen('storage/app/')));
+        $relative = ltrim($relative, '/');
+
+        if (str_contains($relative, '..')) {
+            throw new RuntimeException('Il backup contiene un percorso file non valido.');
+        }
+
+        return storage_path('app/'.$relative);
     }
 
     private static function tables(string $driver): array

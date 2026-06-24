@@ -6,6 +6,8 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
+        <link rel="icon" type="image/png" href="{{ asset('images/logo-filipponi.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('images/logo-filipponi.png') }}">
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -23,8 +25,11 @@
 
             @isset($header)
                 <header class="border-b border-line bg-white/90 backdrop-blur">
-                    <div class="app-section py-6">
-                        {{ $header }}
+                    <div class="app-section flex items-center gap-4 py-5">
+                        <img src="{{ asset('images/logo-filipponi.png') }}" alt="Danilo Filipponi" class="hidden h-12 w-auto shrink-0 object-contain sm:block">
+                        <div class="min-w-0 flex-1">
+                            {{ $header }}
+                        </div>
                     </div>
                 </header>
             @endisset

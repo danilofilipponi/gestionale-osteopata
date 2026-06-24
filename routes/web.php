@@ -21,6 +21,7 @@ Route::get('/dashboard', DashboardController::class)
 Route::middleware('auth')->group(function () {
     Route::get('/settings/patients/export', [PatientController::class, 'export'])->name('patients.export');
     Route::post('/settings/patients/import', [PatientController::class, 'import'])->name('patients.import');
+    Route::post('/settings/patients/merge', [SettingsController::class, 'mergePatients'])->name('settings.patients.merge');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
     Route::post('/accounting/expenses/import', [AccountingController::class, 'importExpenses'])->name('accounting.expenses.import');
@@ -77,6 +78,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/settings/privacy', [SettingsController::class, 'updatePrivacy'])->name('settings.privacy.update');
     Route::patch('/settings/backup', [SettingsController::class, 'updateBackup'])->name('settings.backup.update');
     Route::post('/settings/backup/run', [SettingsController::class, 'runBackup'])->name('settings.backup.run');
+    Route::post('/settings/backup/restore', [SettingsController::class, 'restoreBackup'])->name('settings.backup.restore');
     Route::get('/settings/invoices/export-xml', [SettingsController::class, 'exportInvoicesXml'])->name('settings.invoices.export-xml');
     Route::post('/settings/invoices/import', [SettingsController::class, 'importInvoices'])->name('settings.invoices.import');
     Route::post('/settings/users', [SettingsController::class, 'storeUser'])->name('settings.users.store');

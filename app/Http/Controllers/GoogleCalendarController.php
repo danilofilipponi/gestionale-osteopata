@@ -318,6 +318,14 @@ class GoogleCalendarController extends Controller
         $calendarColor = $calendars->get($calendarId)['backgroundColor'] ?? null;
 
         if ($category) {
+            if (! (bool) ($category['sync_patients'] ?? false)) {
+                return [
+                    'key' => 'personal',
+                    'color' => $calendarColor ?? '#64748b',
+                    'sync_patients' => false,
+                ];
+            }
+
             return [
                 'key' => $category['key'] ?? 'personal',
                 'color' => $calendarColor ?? ($category['color'] ?? '#64748b'),

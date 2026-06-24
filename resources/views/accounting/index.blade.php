@@ -257,6 +257,14 @@
                                     <td class="px-5 py-4 text-base font-black text-ink">Tot. tasse + INPS</td>
                                     <td class="px-5 py-4 text-right text-base font-black text-ink">€ {{ number_format($taxSummary['taxes_and_inps'], 2, ',', '.') }}</td>
                                 </tr>
+                                <tr style="background: #fff7ed;">
+                                    <td class="px-5 py-4 text-base font-black text-ink">Acconto novembre {{ $taxSummary['previous_year'] }}</td>
+                                    <td class="px-5 py-4 text-right text-base font-black text-ink">€ {{ number_format($taxSummary['previous_year_november_advance'], 2, ',', '.') }}</td>
+                                </tr>
+                                <tr style="background: #f5bf8e; border-top: 4px solid #17312d;">
+                                    <td class="px-5 py-4 text-base font-black text-ink">Tot. tasse Luglio</td>
+                                    <td class="px-5 py-4 text-right text-base font-black text-ink">€ {{ number_format($taxSummary['july_taxes_total'], 2, ',', '.') }}</td>
+                                </tr>
                             </tfoot>
                         </table>
                     </div>

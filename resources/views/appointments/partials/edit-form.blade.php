@@ -1,3 +1,7 @@
+@php
+    $appointmentNameParts = preg_split('/\s+/', trim($appointment->title), 2) ?: [];
+@endphp
+
 <form method="POST" action="{{ route('appointments.update', $appointment) }}" class="mt-3 grid gap-2 border-t border-line pt-3 text-sm">
     @csrf
     @method('PATCH')
@@ -35,6 +39,10 @@
         <button form="delete-appointment-{{ $appointment->id }}" class="text-sm font-bold text-red-700 hover:text-red-900" onclick="return confirm('Eliminare questo appuntamento?')">Elimina</button>
         <div class="flex items-center gap-2">
             <button type="button" class="rounded-xl border border-sage bg-white px-3 py-2 text-sm font-bold text-sage hover:bg-mist" data-toggle-link-patient>Collega</button>
+            <a
+                href="{{ route('patients.create', ['appointment_id' => $appointment->id, 'last_name' => $appointmentNameParts[0] ?? '', 'first_name' => $appointmentNameParts[1] ?? '']) }}"
+                class="rounded-xl border border-line bg-white px-3 py-2 text-sm font-bold text-ink hover:bg-mist"
+            >Nuovo paziente</a>
             <a
                 href="{{ $appointment->patient_id ? route('patients.show', $appointment->patient_id) : '#' }}"
                 class="{{ $appointment->patient_id ? 'inline-flex' : 'hidden' }} rounded-xl border border-line bg-white px-3 py-2 text-sm font-bold text-ink hover:bg-mist"

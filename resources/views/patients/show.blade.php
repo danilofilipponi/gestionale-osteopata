@@ -253,7 +253,7 @@
                     <x-primary-button form="anamnesis-form">Salva anamnesi</x-primary-button>
                 </div>
 
-                <form id="anamnesis-form" method="POST" action="{{ route('patients.medical-record.store', $patient) }}" class="mt-5">
+                <form id="anamnesis-form" method="POST" action="{{ route('patients.medical-record.store', $patient) }}" class="mt-5" data-unsaved-form>
                     @csrf
                     <div class="grid gap-4 xl:grid-cols-2">
                         @foreach ($anamnesisGroups as $groupTitle => $group)
@@ -276,9 +276,9 @@
                                         </div>
                                     @endforeach
                                 </div>
-                            </div>
-                        @endforeach
-                    </div>
+                        </div>
+                    @endforeach
+                </div>
 
                     <div class="mt-4 flex justify-end">
                         <x-primary-button>Salva anamnesi</x-primary-button>
@@ -293,6 +293,61 @@
                     <input type="hidden" name="treatment_plan" value="{{ old('treatment_plan', $patient->medicalRecord?->treatment_plan) }}">
                     <input type="hidden" name="contraindications" value="{{ old('contraindications', $patient->medicalRecord?->contraindications) }}">
                 </form>
+
+                <div class="fixed inset-x-4 bottom-4 z-50 hidden rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-xl md:left-auto md:w-[440px]" data-unsaved-warning="anamnesis-form">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="font-bold">Anamnesi non salvata</p>
+                            <p class="mt-1 text-amber-900/80">Salva l'anamnesi prima di uscire dalla pagina.</p>
+                        </div>
+                        <button type="submit" form="anamnesis-form" class="rounded-xl bg-sage px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-[#4f7f75]">Salva anamnesi</button>
+                    </div>
+                </div>
+
+                @push('scripts')
+                    <script>
+                        (() => {
+                            const form = document.getElementById('anamnesis-form');
+                            const warning = document.querySelector('[data-unsaved-warning="anamnesis-form"]');
+
+                            if (! form || ! warning) return;
+
+                            let dirty = false;
+                            let submitting = false;
+
+                            const showWarning = () => {
+                                if (submitting) return;
+                                dirty = true;
+                                warning.classList.remove('hidden');
+                            };
+
+                            form.addEventListener('input', showWarning);
+                            form.addEventListener('change', showWarning);
+                            form.addEventListener('submit', () => {
+                                submitting = true;
+                                dirty = false;
+                                warning.classList.add('hidden');
+                            });
+
+                            window.addEventListener('beforeunload', (event) => {
+                                if (! dirty || submitting) return;
+                                event.preventDefault();
+                                event.returnValue = '';
+                            });
+
+                            document.addEventListener('click', (event) => {
+                                const link = event.target.closest('a[href]');
+                                if (! link || ! dirty || submitting) return;
+                                if (link.target && link.target !== '_self') return;
+                                if (link.href === window.location.href || link.href.startsWith('javascript:')) return;
+
+                                if (! confirm('Ci sono modifiche non salvate. Vuoi uscire senza salvare?')) {
+                                    event.preventDefault();
+                                }
+                            });
+                        })();
+                    </script>
+                @endpush
             </section>
             @endif
 
@@ -408,6 +463,18 @@
                     </div>
                     <div class="mt-4 space-y-3">
                         <div>
+                            <label for="notes" class="flex items-center gap-2 text-xs font-bold uppercase text-muted">
+                                <svg class="h-4 w-4 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M4 4h16v16H4z" />
+                                    <path d="M8 8h8" />
+                                    <path d="M8 12h8" />
+                                    <path d="M8 16h5" />
+                                </svg>
+                                Motivo del consulto
+                            </label>
+                            <textarea id="notes" name="notes" rows="2" class="app-field mt-2 block w-full text-sm" placeholder="Motivo del consulto">{{ old('notes') }}</textarea>
+                        </div>
+                        <div>
                             <label for="treatment" class="flex items-center gap-2 text-xs font-bold uppercase text-muted">
                                 <svg class="h-4 w-4 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M12 2v20" />
@@ -418,18 +485,6 @@
                                 Tipo di trattamento
                             </label>
                             <textarea id="treatment" name="treatment" rows="3" class="app-field mt-2 block w-full text-sm" placeholder="Descrivi il trattamento eseguito">{{ old('treatment') }}</textarea>
-                        </div>
-                        <div>
-                            <label for="notes" class="flex items-center gap-2 text-xs font-bold uppercase text-muted">
-                                <svg class="h-4 w-4 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M4 4h16v16H4z" />
-                                    <path d="M8 8h8" />
-                                    <path d="M8 12h8" />
-                                    <path d="M8 16h5" />
-                                </svg>
-                                Note
-                            </label>
-                            <textarea id="notes" name="notes" rows="2" class="app-field mt-2 block w-full text-sm" placeholder="Note brevi">{{ old('notes') }}</textarea>
                         </div>
                     </div>
                     <div class="mt-4 flex justify-end">
@@ -478,7 +533,18 @@
                                                 <span class="rounded-full border border-line bg-mist px-2.5 py-1 text-muted">{{ $session->paid ? 'Pagata' : 'Da saldare' }}</span>
                                             </div>
                                         </div>
-                                        <div class="mt-3 grid gap-3 md:grid-cols-[1fr_320px]">
+                                        <div class="mt-3 grid gap-3 md:grid-cols-[320px_1fr]">
+                                            <div class="rounded-md border border-line bg-mist/30 p-3">
+                                                <p class="flex items-center gap-2 text-xs font-bold uppercase text-muted">
+                                                    <svg class="h-4 w-4 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <path d="M4 4h16v16H4z" />
+                                                        <path d="M8 8h8" />
+                                                        <path d="M8 12h8" />
+                                                    </svg>
+                                                    Motivo del consulto
+                                                </p>
+                                                <p class="mt-1 text-sm text-ink">{{ $session->notes ?: 'Nessun motivo inserito.' }}</p>
+                                            </div>
                                             <div class="rounded-md border border-line bg-mist/30 p-3">
                                                 <p class="flex items-center gap-2 text-xs font-bold uppercase text-muted">
                                                     <svg class="h-4 w-4 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -488,17 +554,6 @@
                                                     Tipo di trattamento
                                                 </p>
                                                 <p class="mt-1 text-sm text-ink">{{ $session->treatment ?: 'Nessun dettaglio trattamento inserito.' }}</p>
-                                            </div>
-                                            <div class="rounded-md border border-line bg-mist/30 p-3">
-                                                <p class="flex items-center gap-2 text-xs font-bold uppercase text-muted">
-                                                    <svg class="h-4 w-4 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                                        <path d="M4 4h16v16H4z" />
-                                                        <path d="M8 8h8" />
-                                                        <path d="M8 12h8" />
-                                                    </svg>
-                                                    Note
-                                                </p>
-                                                <p class="mt-1 text-sm text-ink">{{ $session->notes ?: 'Nessuna nota inserita.' }}</p>
                                             </div>
                                         </div>
 
@@ -556,12 +611,12 @@
                                     </div>
                                     <div class="mt-4 space-y-3">
                                         <div>
-                                            <x-input-label value="Tipo di trattamento" />
-                                            <textarea name="treatment" rows="3" class="app-field mt-1 block w-full text-sm" placeholder="Descrivi il trattamento eseguito">{{ $session->treatment }}</textarea>
+                                            <x-input-label value="Motivo del consulto" />
+                                            <textarea name="notes" rows="2" class="app-field mt-1 block w-full text-sm" placeholder="Motivo del consulto">{{ $session->notes }}</textarea>
                                         </div>
                                         <div>
-                                            <x-input-label value="Note" />
-                                            <textarea name="notes" rows="2" class="app-field mt-1 block w-full text-sm" placeholder="Note brevi">{{ $session->notes }}</textarea>
+                                            <x-input-label value="Tipo di trattamento" />
+                                            <textarea name="treatment" rows="3" class="app-field mt-1 block w-full text-sm" placeholder="Descrivi il trattamento eseguito">{{ $session->treatment }}</textarea>
                                         </div>
                                     </div>
                                     <div class="mt-4 flex justify-end">

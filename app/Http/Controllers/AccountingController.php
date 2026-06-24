@@ -31,11 +31,9 @@ class AccountingController extends Controller
         $summaryYears = AccountingIncomeSummary::where('user_id', $userId)->select('year')->distinct()->pluck('year')->map(fn ($year) => (int) $year);
         $expenseYears = AccountingExpense::where('user_id', $userId)->select('year')->distinct()->pluck('year')->map(fn ($year) => (int) $year);
         $sessionYears = TreatmentSession::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
-            ->selectRaw('YEAR(session_date) as year')
-            ->distinct()
-            ->pluck('year')
+            ->pluck('session_date')
             ->filter()
-            ->map(fn ($year) => (int) $year);
+            ->map(fn ($date) => (int) $date->format('Y'));
         $years = $invoiceYears->merge($incomeYears)->merge($summaryYears)->merge($expenseYears)->merge($sessionYears)->unique()->sortDesc()->values();
 
         if ($years->isEmpty()) {
@@ -147,15 +145,9 @@ class AccountingController extends Controller
         $yearToInvoice = (float) $monthlyRows->sum('to_invoice');
         $yearTotalIncome = (float) $monthlyRows->sum('total_income');
         $taxSettings = $this->taxSettings();
-        $taxBase = $yearInvoiced;
-        $flatRateCosts = $taxBase * $taxSettings['flat_rate_costs_rate'] / 100;
-        $taxableIncome = max($taxBase - $flatRateCosts, 0);
-        $tax15 = $taxableIncome * $taxSettings['tax_rate'] / 100;
-        $inps = $taxableIncome * $taxSettings['inps_rate'] / 100;
-        $taxesAndInps = $tax15 + $inps;
-        $novemberTaxAdvance = $tax15 * $taxSettings['november_tax_advance_rate'] / 100;
-        $novemberInpsAdvance = ($inps * $taxSettings['november_inps_advance_rate'] / 100) / max($taxSettings['november_inps_installments'], 1);
-        $novemberAdvanceTotal = $novemberTaxAdvance + $novemberInpsAdvance;
+        $taxSummary = $this->taxSummaryForAmount($yearInvoiced, $taxSettings);
+        $previousYearNovemberAdvance = $this->novemberAdvanceForYear($userId, $selectedYear - 1, $taxSettings);
+        $julyTaxesTotal = $taxSummary['taxes_and_inps'] - $previousYearNovemberAdvance;
 
         return view('accounting.index', [
             'years' => $years,
@@ -171,15 +163,10 @@ class AccountingController extends Controller
             'chartLabel' => $chartLabels[$chartMetric],
             'chartTotal' => (float) $monthlyRows->sum($chartMetric),
             'taxSummary' => [
-                'gross_total' => $taxBase,
-                'flat_rate_costs' => $flatRateCosts,
-                'taxable_income' => $taxableIncome,
-                'tax_15' => $tax15,
-                'inps' => $inps,
-                'taxes_and_inps' => $taxesAndInps,
-                'november_tax_advance' => $novemberTaxAdvance,
-                'november_inps_advance' => $novemberInpsAdvance,
-                'november_advance_total' => $novemberAdvanceTotal,
+                ...$taxSummary,
+                'previous_year' => $selectedYear - 1,
+                'previous_year_november_advance' => $previousYearNovemberAdvance,
+                'july_taxes_total' => $julyTaxesTotal,
                 'settings' => $taxSettings,
             ],
         ]);
@@ -288,6 +275,39 @@ class AccountingController extends Controller
             'november_tax_advance_rate' => (float) Setting::getValue('accounting_november_tax_advance_rate', '60'),
             'november_inps_advance_rate' => (float) Setting::getValue('accounting_november_inps_advance_rate', '80'),
             'november_inps_installments' => max((int) Setting::getValue('accounting_november_inps_installments', '2'), 1),
+        ];
+    }
+
+    private function novemberAdvanceForYear(int $userId, int $year, array $taxSettings): float
+    {
+        $invoiced = (float) Invoice::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
+            ->where('year', $year)
+            ->where('status', '!=', 'cancelled')
+            ->sum('amount');
+
+        return $this->taxSummaryForAmount($invoiced, $taxSettings)['november_advance_total'];
+    }
+
+    private function taxSummaryForAmount(float $grossTotal, array $taxSettings): array
+    {
+        $flatRateCosts = $grossTotal * $taxSettings['flat_rate_costs_rate'] / 100;
+        $taxableIncome = max($grossTotal - $flatRateCosts, 0);
+        $tax15 = $taxableIncome * $taxSettings['tax_rate'] / 100;
+        $inps = $taxableIncome * $taxSettings['inps_rate'] / 100;
+        $taxesAndInps = $tax15 + $inps;
+        $novemberTaxAdvance = $tax15 * $taxSettings['november_tax_advance_rate'] / 100;
+        $novemberInpsAdvance = ($inps * $taxSettings['november_inps_advance_rate'] / 100) / max($taxSettings['november_inps_installments'], 1);
+
+        return [
+            'gross_total' => $grossTotal,
+            'flat_rate_costs' => $flatRateCosts,
+            'taxable_income' => $taxableIncome,
+            'tax_15' => $tax15,
+            'inps' => $inps,
+            'taxes_and_inps' => $taxesAndInps,
+            'november_tax_advance' => $novemberTaxAdvance,
+            'november_inps_advance' => $novemberInpsAdvance,
+            'november_advance_total' => $novemberTaxAdvance + $novemberInpsAdvance,
         ];
     }
 }

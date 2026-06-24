@@ -20,7 +20,7 @@
 @endphp
 
 <div class="grid gap-6 xl:grid-cols-[1fr_320px]">
-    <form method="POST" action="{{ $action }}" class="app-card p-6" data-patient-form>
+    <form id="patient-form" method="POST" action="{{ $action }}" class="app-card p-6" data-patient-form data-unsaved-form>
         @csrf
         @if (! empty($pendingAppointmentId))
             <input type="hidden" name="appointment_id" value="{{ $pendingAppointmentId }}">
@@ -225,3 +225,58 @@
 </div>
 
 <datalist id="italian-cities"></datalist>
+
+<div class="fixed inset-x-4 bottom-4 z-50 hidden rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-xl md:left-auto md:w-[440px]" data-unsaved-warning="patient-form">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <p class="font-bold">Modifiche non salvate</p>
+            <p class="mt-1 text-amber-900/80">Salva il paziente prima di uscire dalla pagina.</p>
+        </div>
+        <button type="submit" form="patient-form" class="rounded-xl bg-sage px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-[#4f7f75]">Salva paziente</button>
+    </div>
+</div>
+
+@push('scripts')
+    <script>
+        (() => {
+            const form = document.querySelector('[data-unsaved-form][id="patient-form"]');
+            const warning = document.querySelector('[data-unsaved-warning="patient-form"]');
+
+            if (! form || ! warning) return;
+
+            let dirty = false;
+            let submitting = false;
+
+            const showWarning = () => {
+                if (submitting) return;
+                dirty = true;
+                warning.classList.remove('hidden');
+            };
+
+            form.addEventListener('input', showWarning);
+            form.addEventListener('change', showWarning);
+            form.addEventListener('submit', () => {
+                submitting = true;
+                dirty = false;
+                warning.classList.add('hidden');
+            });
+
+            window.addEventListener('beforeunload', (event) => {
+                if (! dirty || submitting) return;
+                event.preventDefault();
+                event.returnValue = '';
+            });
+
+            document.addEventListener('click', (event) => {
+                const link = event.target.closest('a[href]');
+                if (! link || ! dirty || submitting) return;
+                if (link.target && link.target !== '_self') return;
+                if (link.href === window.location.href || link.href.startsWith('javascript:')) return;
+
+                if (! confirm('Ci sono modifiche non salvate. Vuoi uscire senza salvare?')) {
+                    event.preventDefault();
+                }
+            });
+        })();
+    </script>
+@endpush

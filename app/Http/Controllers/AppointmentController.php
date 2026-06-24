@@ -186,7 +186,7 @@ class AppointmentController extends Controller
         $categories = json_decode(Setting::getValue('agenda_categories', '[]'), true) ?: [];
 
         if ($categories !== []) {
-            return $categories;
+            return $this->ensurePersonalCategory($categories);
         }
 
         return [
@@ -195,6 +195,23 @@ class AppointmentController extends Controller
             ['key' => 'holiday', 'label' => 'Ferie', 'color' => '#d97706'],
             ['key' => 'absence', 'label' => 'Assenza', 'color' => '#dc2626'],
         ];
+    }
+
+    private function ensurePersonalCategory(array $categories): array
+    {
+        $hasPersonal = collect($categories)->contains(fn (array $category) => ($category['key'] ?? null) === 'personal');
+
+        if (! $hasPersonal) {
+            $categories[] = [
+                'key' => 'personal',
+                'label' => 'Personale',
+                'color' => '#64748b',
+                'google_calendar_id' => '',
+                'sync_patients' => false,
+            ];
+        }
+
+        return array_values($categories);
     }
 
     private function categoryColor(string $type): string

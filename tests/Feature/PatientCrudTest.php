@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\User;
 use App\Support\PatientExcelExporter;
@@ -28,14 +29,15 @@ class PatientCrudTest extends TestCase
             ->assertSee('Luogo di nascita')
             ->assertSee('Calcolato automaticamente')
             ->assertSee('Dati fiscali ed esportazione')
-            ->assertSee('Consiglio operativo');
+            ->assertSee('Consiglio operativo')
+            ->assertSee('data-unsaved-warning="patient-form"', false);
     }
 
     public function test_patient_can_be_created_from_guided_form(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->post(route('patients.store'), [
                 'first_name' => 'Mario',
                 'last_name' => 'Rossi',
@@ -52,9 +54,12 @@ class PatientCrudTest extends TestCase
                 'province' => 'RM',
                 'postal_code' => '00100',
                 'notes' => 'Primo contatto.',
-            ])
-            ->assertRedirect();
+            ]);
 
+        $patient = Patient::where('email', 'mario.rossi@example.com')->first();
+
+        $this->assertNotNull($patient);
+        $response->assertRedirect(route('patients.anamnesis.index', $patient, false));
         $this->assertDatabaseHas('patients', [
             'user_id' => $user->id,
             'first_name' => 'Mario',
@@ -63,6 +68,38 @@ class PatientCrudTest extends TestCase
             'street_number' => '1',
             'customer_type' => 'Privato',
             'telematic_address' => '0000000',
+        ]);
+    }
+
+    public function test_patient_created_from_appointment_link_is_matched_to_appointment(): void
+    {
+        $user = User::factory()->create();
+        $appointment = Appointment::create([
+            'title' => 'Bianchi Luisa',
+            'starts_at' => '2026-06-06 09:00:00',
+            'ends_at' => '2026-06-06 10:00:00',
+            'type' => 'visit',
+            'status' => 'scheduled',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('patients.store'), [
+                'appointment_id' => $appointment->id,
+                'first_name' => 'Luisa',
+                'last_name' => 'Bianchi',
+                'phone' => '3331234567',
+                'email' => 'luisa@example.com',
+            ])
+            ->assertRedirect();
+
+        $patient = Patient::where('email', 'luisa@example.com')->first();
+
+        $this->assertNotNull($patient);
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'title' => 'Bianchi Luisa',
+            'patient_match_status' => 'matched',
         ]);
     }
 

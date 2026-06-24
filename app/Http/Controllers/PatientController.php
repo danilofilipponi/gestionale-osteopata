@@ -13,9 +13,11 @@ use App\Support\InvoiceCourtesyPdf;
 use App\Support\InvoiceDefaults;
 use App\Support\TreatmentSessionAutomation;
 use App\Support\PrivacyConsentPdf;
+use App\Support\GoogleCalendarClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class PatientController extends Controller
 {
@@ -109,18 +111,40 @@ class PatientController extends Controller
         ]);
 
         if (! empty($appointmentData['appointment_id'])) {
-            Appointment::whereKey($appointmentData['appointment_id'])
+            $appointment = Appointment::whereKey($appointmentData['appointment_id'])
                 ->whereNull('patient_id')
-                ->update([
-                    'patient_id' => $patient->id,
-                    'patient_match_status' => 'matched',
-                    'title' => $patient->list_name,
-                ]);
+                ->first();
+
+            $appointment?->update([
+                'patient_id' => $patient->id,
+                'patient_match_status' => 'matched',
+                'title' => $patient->list_name,
+            ]);
+
+            if ($appointment) {
+                $this->syncAppointmentWithGoogle($appointment);
+            }
         }
 
         return redirect()
-            ->route('patients.show', $patient)
+            ->route('patients.anamnesis.index', $patient)
             ->with('status', 'Paziente creato correttamente.');
+    }
+
+    private function syncAppointmentWithGoogle(Appointment $appointment): void
+    {
+        try {
+            $eventId = GoogleCalendarClient::upsertAppointment($appointment->loadMissing('patient'));
+
+            if ($eventId && $appointment->google_event_id !== $eventId) {
+                $appointment->forceFill([
+                    'google_event_id' => $eventId,
+                    'google_calendar_id' => GoogleCalendarClient::calendarIdForType($appointment->type),
+                ])->save();
+            }
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 
     public function show(Patient $patient)

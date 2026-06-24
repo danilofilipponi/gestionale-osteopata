@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Appointment;
 use App\Models\Setting;
 use App\Models\Invoice;
 use App\Models\Patient;
 use App\Models\User;
+use App\Support\ApplicationBackup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
@@ -343,6 +345,66 @@ class SettingsTest extends TestCase
             ->assertSee('Tutti');
     }
 
+    public function test_patient_duplicates_can_be_merged_from_settings(): void
+    {
+        $user = User::factory()->create();
+        $primary = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Simona',
+            'last_name' => 'Lucarelli',
+            'phone' => '3474218408',
+        ]);
+        $duplicate = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Simona',
+            'last_name' => 'Lucarelli',
+            'phone' => '3474218408',
+            'email' => 'simona@example.com',
+        ]);
+
+        $duplicate->treatmentSessions()->create([
+            'session_date' => '2026-06-20',
+            'title' => 'Seduta',
+            'fee' => 40,
+        ]);
+        Invoice::create([
+            'patient_id' => $duplicate->id,
+            'number' => '1/2026',
+            'year' => 2026,
+            'progressive_number' => 1,
+            'issued_at' => '2026-06-20',
+            'amount' => 40,
+            'status' => 'paid',
+        ]);
+        Appointment::create([
+            'patient_id' => $duplicate->id,
+            'title' => 'Lucarelli Simona',
+            'starts_at' => '2026-06-20 09:00:00',
+            'ends_at' => '2026-06-20 09:45:00',
+            'type' => 'visit',
+            'status' => 'scheduled',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('settings.patients.merge'), [
+                'primary_patient_id' => $primary->id,
+                'duplicate_patient_ids' => [$duplicate->id],
+            ])
+            ->assertRedirect(route('settings.patients'));
+
+        $this->assertDatabaseMissing('patients', ['id' => $duplicate->id]);
+        $this->assertDatabaseHas('patients', [
+            'id' => $primary->id,
+            'email' => 'simona@example.com',
+        ]);
+        $this->assertDatabaseHas('treatment_sessions', ['patient_id' => $primary->id]);
+        $this->assertDatabaseHas('invoices', ['patient_id' => $primary->id]);
+        $this->assertDatabaseHas('appointments', [
+            'patient_id' => $primary->id,
+            'patient_match_status' => 'matched',
+        ]);
+    }
+
     public function test_backup_can_be_run_from_settings(): void
     {
         $user = User::factory()->create();
@@ -365,6 +427,60 @@ class SettingsTest extends TestCase
 
         $this->assertCount(1, $files);
         $this->assertSame('zip', $files[0]->getExtension());
+
+        File::deleteDirectory($backupPath);
+    }
+
+    public function test_backup_can_be_restored_from_settings(): void
+    {
+        $user = User::factory()->create();
+        $backupPath = storage_path('framework/testing/restore-backups');
+
+        File::deleteDirectory($backupPath);
+
+        Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+
+        Setting::setValue('backup_path', $backupPath, 'backup');
+        Setting::setValue('backup_database', '1', 'backup');
+        Setting::setValue('backup_uploaded_files', '0', 'backup');
+        Setting::setValue('backup_generated_documents', '0', 'backup');
+        Setting::setValue('backup_logs', '0', 'backup');
+
+        $backup = ApplicationBackup::run();
+
+        Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Luisa',
+            'last_name' => 'Bianchi',
+        ]);
+
+        $this->assertDatabaseHas('patients', [
+            'first_name' => 'Luisa',
+            'last_name' => 'Bianchi',
+        ]);
+
+        $upload = new UploadedFile($backup['path'], $backup['filename'], 'application/zip', null, true);
+
+        $this->actingAs($user)
+            ->post(route('settings.backup.restore'), [
+                'backup_file' => $upload,
+                'restore_database' => '1',
+                'restore_confirmation' => 'RIPRISTINA',
+            ])
+            ->assertRedirect(route('settings.backup'));
+
+        $this->assertDatabaseHas('patients', [
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+        $this->assertDatabaseMissing('patients', [
+            'first_name' => 'Luisa',
+            'last_name' => 'Bianchi',
+        ]);
 
         File::deleteDirectory($backupPath);
     }

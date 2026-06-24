@@ -59,6 +59,7 @@ class PatientFolderTest extends TestCase
             ->assertOk()
             ->assertSee('Cartella clinica')
             ->assertSee('Salva anamnesi')
+            ->assertSee('data-unsaved-warning="anamnesis-form"', false)
             ->assertDontSee('Modifica dati');
 
         $this->actingAs($user)

@@ -25,14 +25,19 @@
         $slotHeight = 26;
         $agendaStartMinutes = (int) now()->setTimeFromTimeString($settings['agenda_start_time'])->diffInMinutes(now()->setTimeFromTimeString($settings['agenda_end_time']));
         $agendaBodyHeight = max(count($timeSlots) * $slotHeight, $slotHeight);
-        $agendaPatients = $patients->map(function ($patient) {
-            return [
-                'id' => $patient->id,
-                'name' => $patient->list_name,
-                'phone' => $patient->phone,
-                'email' => $patient->email,
-            ];
-        })->values();
+        $agendaPatients = $patients
+            ->sortByDesc('id')
+            ->unique(fn ($patient) => mb_strtolower(trim($patient->list_name.'|'.$patient->phone.'|'.$patient->email)))
+            ->sortBy('list_name')
+            ->map(function ($patient) {
+                return [
+                    'id' => $patient->id,
+                    'name' => $patient->list_name,
+                    'phone' => $patient->phone,
+                    'email' => $patient->email,
+                ];
+            })
+            ->values();
         $syncPatientCalendarIds = collect($categories)
             ->filter(fn ($category) => filter_var($category['sync_patients'] ?? false, FILTER_VALIDATE_BOOL))
             ->pluck('google_calendar_id')

@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Appointment;
 use App\Models\Invoice;
+use App\Models\MedicalRecord;
+use App\Models\Notification;
 use App\Models\Patient;
+use App\Models\PrivacyConsent;
 use App\Models\Setting;
+use App\Models\TreatmentSession;
 use App\Models\User;
 use App\Support\InvoiceExcelImporter;
 use App\Support\InvoiceXmlExporter;
@@ -14,6 +19,7 @@ use App\Support\PrivacyConsentTemplate;
 use App\Support\TreatmentSessionDefaults;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class SettingsController extends Controller
@@ -203,6 +209,56 @@ class SettingsController extends Controller
             ->with('status', 'Documento privacy aggiornato.');
     }
 
+    public function mergePatients(Request $request)
+    {
+        $validated = $request->validate([
+            'primary_patient_id' => ['required', 'integer', 'exists:patients,id'],
+            'duplicate_patient_ids' => ['required', 'array', 'min:1'],
+            'duplicate_patient_ids.*' => ['integer', 'distinct', 'exists:patients,id'],
+        ]);
+
+        $duplicateIds = collect($validated['duplicate_patient_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->reject(fn (int $id) => $id === (int) $validated['primary_patient_id'])
+            ->values();
+
+        abort_if($duplicateIds->isEmpty(), 422, 'Seleziona almeno un duplicato diverso dal paziente principale.');
+
+        $userId = Auth::id();
+        $primary = Patient::where('user_id', $userId)->findOrFail($validated['primary_patient_id']);
+        $duplicates = Patient::where('user_id', $userId)
+            ->whereIn('id', $duplicateIds)
+            ->get();
+
+        abort_if($duplicates->count() !== $duplicateIds->count(), 403, 'Uno o piu pazienti selezionati non sono disponibili.');
+
+        $merged = DB::transaction(function () use ($primary, $duplicates) {
+            foreach ($duplicates as $duplicate) {
+                $this->mergePatientFields($primary, $duplicate);
+                $this->mergeSinglePatientRecord(MedicalRecord::class, $primary, $duplicate);
+                $this->mergePrivacyConsent($primary, $duplicate);
+
+                TreatmentSession::where('patient_id', $duplicate->id)->update(['patient_id' => $primary->id]);
+                Invoice::where('patient_id', $duplicate->id)->update(['patient_id' => $primary->id]);
+                Appointment::where('patient_id', $duplicate->id)->update([
+                    'patient_id' => $primary->id,
+                    'patient_match_status' => 'matched',
+                ]);
+                Notification::where('patient_id', $duplicate->id)->update(['patient_id' => $primary->id]);
+
+                $duplicate->delete();
+            }
+
+            $primary->save();
+
+            return $duplicates->count();
+        });
+
+        return redirect()
+            ->route('settings.patients')
+            ->with('status', "Unione completata: {$merged} duplicati uniti nella scheda di {$primary->list_name}.");
+    }
+
     public function updateBackup(Request $request)
     {
         $validated = $request->validate([
@@ -259,6 +315,28 @@ class SettingsController extends Controller
         return redirect()
             ->route('settings.backup')
             ->with('status', $message);
+    }
+
+    public function restoreBackup(Request $request)
+    {
+        $validated = $request->validate([
+            'backup_file' => ['required', 'file', 'mimes:zip', 'max:512000'],
+            'restore_database' => ['nullable', 'boolean'],
+            'restore_files' => ['nullable', 'boolean'],
+            'restore_confirmation' => ['required', 'string'],
+        ]);
+
+        abort_unless($validated['restore_confirmation'] === 'RIPRISTINA', 422, 'Per confermare scrivi RIPRISTINA.');
+
+        $result = ApplicationBackup::restore(
+            $validated['backup_file']->getRealPath(),
+            $request->boolean('restore_database'),
+            $request->boolean('restore_files'),
+        );
+
+        return redirect()
+            ->route('settings.backup')
+            ->with('status', 'Ripristino completato: '.implode(', ', $result['restored']).'.');
     }
 
     public function updateInvoices(Request $request)
@@ -392,6 +470,11 @@ class SettingsController extends Controller
             'privacyTemplate' => PrivacyConsentTemplate::text(),
             'privacyTemplateUpdatedAt' => Setting::getValue('privacy_consent_template_updated_at'),
             'backupSettings' => $this->backupValues(),
+            'patientsForMerge' => Patient::where('user_id', Auth::id())
+                ->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get(['id', 'legacy_patient_id', 'first_name', 'last_name', 'birth_date', 'phone', 'email', 'fiscal_code']),
+            'patientDuplicateGroups' => $this->patientDuplicateGroups(),
             'patientExportFrom' => $patientExportFrom,
             'patientExportTo' => $patientExportTo,
             'patientExportCount' => $this->patientExportQuery($patientExportFrom, $patientExportTo)->count(),
@@ -771,7 +854,7 @@ class SettingsController extends Controller
         $categories = json_decode(Setting::getValue('agenda_categories', '[]'), true) ?: [];
 
         if ($categories !== []) {
-            return $categories;
+            return $this->ensurePersonalAgendaCategory($categories);
         }
 
         return [
@@ -782,11 +865,143 @@ class SettingsController extends Controller
         ];
     }
 
+    private function ensurePersonalAgendaCategory(array $categories): array
+    {
+        $hasPersonal = collect($categories)->contains(fn (array $category) => ($category['key'] ?? null) === 'personal');
+
+        if (! $hasPersonal) {
+            $categories[] = [
+                'key' => 'personal',
+                'label' => 'Personale',
+                'color' => '#64748b',
+                'google_calendar_id' => '',
+                'sync_patients' => false,
+            ];
+        }
+
+        return array_values($categories);
+    }
+
     private function patientExportQuery(?string $from, ?string $to)
     {
         return Patient::where('user_id', Auth::id())
             ->when($from, fn ($query) => $query->whereDate('created_at', '>=', $from))
             ->when($to, fn ($query) => $query->whereDate('created_at', '<=', $to));
+    }
+
+    private function mergePatientFields(Patient $primary, Patient $duplicate): void
+    {
+        $fields = collect($primary->getFillable())
+            ->reject(fn (string $field) => in_array($field, ['user_id'], true));
+
+        foreach ($fields as $field) {
+            if (blank($primary->{$field}) && filled($duplicate->{$field})) {
+                $primary->{$field} = $duplicate->{$field};
+            }
+        }
+
+        if (filled($duplicate->notes) && $duplicate->notes !== $primary->notes) {
+            $primary->notes = trim(collect([$primary->notes, $duplicate->notes])->filter()->implode("\n"));
+        }
+    }
+
+    private function mergeSinglePatientRecord(string $modelClass, Patient $primary, Patient $duplicate): void
+    {
+        $primaryRecord = $modelClass::where('patient_id', $primary->id)->first();
+        $duplicateRecord = $modelClass::where('patient_id', $duplicate->id)->first();
+
+        if (! $duplicateRecord) {
+            return;
+        }
+
+        if (! $primaryRecord) {
+            $duplicateRecord->patient_id = $primary->id;
+            $duplicateRecord->save();
+
+            return;
+        }
+
+        foreach ($duplicateRecord->getFillable() as $field) {
+            if (blank($primaryRecord->{$field}) && filled($duplicateRecord->{$field})) {
+                $primaryRecord->{$field} = $duplicateRecord->{$field};
+            }
+        }
+
+        $primaryRecord->save();
+        $duplicateRecord->delete();
+    }
+
+    private function mergePrivacyConsent(Patient $primary, Patient $duplicate): void
+    {
+        $primaryConsent = PrivacyConsent::where('patient_id', $primary->id)->first();
+        $duplicateConsent = PrivacyConsent::where('patient_id', $duplicate->id)->first();
+
+        if (! $duplicateConsent) {
+            return;
+        }
+
+        if (! $primaryConsent) {
+            $duplicateConsent->patient_id = $primary->id;
+            $duplicateConsent->save();
+
+            return;
+        }
+
+        foreach ($duplicateConsent->getFillable() as $field) {
+            $duplicateValue = $duplicateConsent->{$field};
+
+            if (is_bool($primaryConsent->{$field}) && $duplicateValue === true) {
+                $primaryConsent->{$field} = true;
+            } elseif (blank($primaryConsent->{$field}) && filled($duplicateValue)) {
+                $primaryConsent->{$field} = $duplicateValue;
+            }
+        }
+
+        if (filled($duplicateConsent->notes) && $duplicateConsent->notes !== $primaryConsent->notes) {
+            $primaryConsent->notes = trim(collect([$primaryConsent->notes, $duplicateConsent->notes])->filter()->implode("\n"));
+        }
+
+        $primaryConsent->save();
+        $duplicateConsent->delete();
+    }
+
+    private function patientDuplicateGroups()
+    {
+        return Patient::where('user_id', Auth::id())
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get(['id', 'legacy_patient_id', 'first_name', 'last_name', 'birth_date', 'phone', 'email', 'fiscal_code'])
+            ->groupBy(fn (Patient $patient) => $this->patientDuplicateKey($patient))
+            ->filter(fn ($patients, string $key) => $key !== '' && $patients->count() > 1)
+            ->values();
+    }
+
+    private function patientDuplicateKey(Patient $patient): string
+    {
+        if (filled($patient->fiscal_code)) {
+            return 'cf:'.strtoupper(trim($patient->fiscal_code));
+        }
+
+        $name = trim(strtolower($patient->last_name.' '.$patient->first_name));
+        $birthDate = $patient->birth_date?->format('Y-m-d') ?? '';
+
+        if ($name !== '' && $birthDate !== '') {
+            return 'name-birth:'.$name.'|'.$birthDate;
+        }
+
+        $phone = preg_replace('/\D+/', '', (string) $patient->phone);
+
+        if ($name !== '' && $phone !== '') {
+            return 'name-phone:'.$name.'|'.$phone;
+        }
+
+        $email = strtolower(trim((string) $patient->email));
+
+        if ($name !== '' && $email !== '') {
+            return 'name-email:'.$name.'|'.$email;
+        }
+
+        return '';
     }
 
     private function invoiceExportQuery(?string $from, ?string $to)

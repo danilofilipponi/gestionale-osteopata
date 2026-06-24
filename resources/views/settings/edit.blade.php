@@ -74,6 +74,135 @@
                             <x-primary-button>Importa Excel pazienti</x-primary-button>
                         </form>
                     </section>
+
+                    <section class="app-card p-6">
+                        <div class="flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Unisci duplicati</h3>
+                                <p class="mt-1 text-sm text-gray-500">Sposta fatture, sedute, appuntamenti, notifiche e documenti clinici nella scheda paziente principale.</p>
+                            </div>
+                            <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Pulizia archivio</span>
+                        </div>
+
+                        @if ($patientDuplicateGroups->isNotEmpty())
+                            <div class="mt-5 rounded-2xl border border-line bg-mist p-4">
+                                <p class="text-sm font-bold uppercase text-muted">Possibili duplicati trovati</p>
+                                <div class="mt-3 space-y-2">
+                                    @foreach ($patientDuplicateGroups as $group)
+                                        <div class="rounded-xl border border-line bg-white p-3 text-sm">
+                                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                                <div class="flex flex-wrap gap-2">
+                                                @foreach ($group as $candidate)
+                                                    <span class="rounded-full bg-white px-3 py-1 font-bold text-ink shadow-sm">
+                                                        {{ $candidate->list_name ?: 'Paziente senza nome' }}
+                                                        <span class="font-normal text-muted">#{{ $candidate->id }}{{ $candidate->phone ? ' - '.$candidate->phone : '' }}</span>
+                                                    </span>
+                                                @endforeach
+                                                </div>
+                                                <button type="button" class="rounded-xl border border-line bg-white px-3 py-2 text-xs font-bold text-sage shadow-sm hover:bg-mist" data-select-duplicate-group data-primary-id="{{ $group->first()->id }}" data-duplicate-ids='@json($group->skip(1)->pluck('id')->values())'>
+                                                    Seleziona gruppo
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @else
+                            <div class="mt-5 rounded-2xl border border-line bg-mist p-4 text-sm text-muted">
+                                Nessun duplicato evidente trovato con codice fiscale, nome/data di nascita, telefono o email uguali.
+                            </div>
+                        @endif
+
+                        <form method="POST" action="{{ route('settings.patients.merge') }}" class="mt-5 space-y-4" onsubmit="return confirm('Confermi l\\'unione dei duplicati selezionati? Le schede duplicate verranno eliminate dopo lo spostamento dei dati.');">
+                            @csrf
+                            <div class="grid gap-4 lg:grid-cols-2">
+                                <div>
+                                    <x-input-label for="primary_patient_id" value="Scheda paziente da mantenere" />
+                                    <select id="primary_patient_id" name="primary_patient_id" class="app-field mt-1 block w-full" required>
+                                        <option value="">Seleziona paziente principale</option>
+                                        @foreach ($patientsForMerge as $patientOption)
+                                            <option value="{{ $patientOption->id }}" @selected(old('primary_patient_id') == $patientOption->id)>
+                                                {{ $patientOption->list_name ?: 'Paziente senza nome' }} - ID {{ $patientOption->id }}{{ $patientOption->phone ? ' - '.$patientOption->phone : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <x-input-error :messages="$errors->get('primary_patient_id')" class="mt-2" />
+                                </div>
+
+                                <div>
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <x-input-label for="duplicate_patient_ids" value="Schede duplicate da unire ed eliminare" />
+                                        <div class="flex gap-2">
+                                            <button type="button" class="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-bold text-sage hover:bg-mist" data-select-all-duplicates>Seleziona tutti</button>
+                                            <button type="button" class="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-bold text-muted hover:bg-mist" data-clear-duplicates>Pulisci</button>
+                                        </div>
+                                    </div>
+                                    <select id="duplicate_patient_ids" name="duplicate_patient_ids[]" class="app-field mt-1 block w-full" size="6" multiple required>
+                                        @foreach ($patientsForMerge as $patientOption)
+                                            <option value="{{ $patientOption->id }}" @selected(in_array($patientOption->id, old('duplicate_patient_ids', [])))>
+                                                {{ $patientOption->list_name ?: 'Paziente senza nome' }} - ID {{ $patientOption->id }}{{ $patientOption->phone ? ' - '.$patientOption->phone : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <p class="mt-2 text-xs text-muted">Puoi selezionare piu righe tenendo premuto CTRL.</p>
+                                    <x-input-error :messages="$errors->get('duplicate_patient_ids')" class="mt-2" />
+                                    <x-input-error :messages="$errors->get('duplicate_patient_ids.*')" class="mt-2" />
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                                Verranno mantenuti i dati gia presenti nella scheda principale. I campi vuoti saranno completati dai duplicati; sedute, fatture, appuntamenti e notifiche saranno spostati sul paziente principale.
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button class="rounded-xl bg-sage px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75]">
+                                    Unisci duplicati
+                                </button>
+                            </div>
+                        </form>
+
+                        @push('scripts')
+                            <script>
+                                (() => {
+                                    const primary = document.getElementById('primary_patient_id');
+                                    const duplicates = document.getElementById('duplicate_patient_ids');
+                                    const selectAll = document.querySelector('[data-select-all-duplicates]');
+                                    const clear = document.querySelector('[data-clear-duplicates]');
+
+                                    if (! primary || ! duplicates) return;
+
+                                    const selectDuplicateIds = (ids) => {
+                                        const wanted = new Set(ids.map(String));
+                                        Array.from(duplicates.options).forEach((option) => {
+                                            option.selected = wanted.has(option.value);
+                                        });
+                                    };
+
+                                    selectAll?.addEventListener('click', () => {
+                                        const primaryId = primary.value;
+                                        Array.from(duplicates.options).forEach((option) => {
+                                            option.selected = option.value !== primaryId;
+                                        });
+                                    });
+
+                                    clear?.addEventListener('click', () => selectDuplicateIds([]));
+
+                                    primary.addEventListener('change', () => {
+                                        Array.from(duplicates.options).forEach((option) => {
+                                            if (option.value === primary.value) option.selected = false;
+                                        });
+                                    });
+
+                                    document.querySelectorAll('[data-select-duplicate-group]').forEach((button) => {
+                                        button.addEventListener('click', () => {
+                                            primary.value = button.dataset.primaryId || '';
+                                            selectDuplicateIds(JSON.parse(button.dataset.duplicateIds || '[]'));
+                                        });
+                                    });
+                                })();
+                            </script>
+                        @endpush
+                    </section>
                     @endif
 
                     @if ($section === 'studio')
@@ -1048,6 +1177,54 @@
 
                             <div class="flex justify-end">
                                 <x-primary-button>Salva impostazioni backup</x-primary-button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <section class="app-card overflow-hidden border-red-100">
+                        <div class="border-b border-red-100 bg-red-50 px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-red-700">
+                                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 3"/></svg>
+                                </span>
+                                <div>
+                                    <p class="text-xs font-bold uppercase text-red-700">Ripristino</p>
+                                    <h3 class="mt-1 text-lg font-semibold text-gray-900">Ripristina da un backup</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form method="POST" action="{{ route('settings.backup.restore') }}" enctype="multipart/form-data" class="space-y-5 p-6">
+                            @csrf
+
+                            <div class="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900/80">
+                                Usa solo file ZIP creati dal gestionale. Il database viene riportato allo stato del backup selezionato.
+                            </div>
+
+                            <div class="grid gap-4 lg:grid-cols-[1fr_220px]">
+                                <div>
+                                    <x-input-label for="backup_file" value="File backup ZIP" />
+                                    <input id="backup_file" name="backup_file" type="file" accept=".zip" class="mt-1 block w-full rounded-xl border border-line bg-white px-4 py-3 text-sm shadow-sm">
+                                </div>
+                                <div>
+                                    <x-input-label for="restore_confirmation" value="Conferma" />
+                                    <x-text-input id="restore_confirmation" name="restore_confirmation" class="mt-1 block w-full" placeholder="RIPRISTINA" />
+                                </div>
+                            </div>
+
+                            <div class="grid gap-3 md:grid-cols-2">
+                                <label class="flex items-center gap-3 rounded-xl border border-red-100 bg-white px-4 py-3 text-sm font-semibold text-gray-800">
+                                    <input type="checkbox" name="restore_database" value="1" class="rounded border-line text-red-700 focus:ring-red-700">
+                                    Ripristina database
+                                </label>
+                                <label class="flex items-center gap-3 rounded-xl border border-red-100 bg-white px-4 py-3 text-sm font-semibold text-gray-800">
+                                    <input type="checkbox" name="restore_files" value="1" class="rounded border-line text-red-700 focus:ring-red-700">
+                                    Ripristina file e documenti
+                                </label>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button type="submit" class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-6 py-3 text-sm font-bold text-red-700 shadow-sm transition hover:bg-red-100">Ripristina backup</button>
                             </div>
                         </form>
                     </section>
