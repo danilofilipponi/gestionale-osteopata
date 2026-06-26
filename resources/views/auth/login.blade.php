@@ -1,6 +1,9 @@
 <x-guest-layout>
     <div class="mb-8 text-center">
-        <h1 class="text-2xl font-semibold text-gray-900">Studio Osteopatico Dott. Filipponi Danilo</h1>
+        <h1 class="text-2xl font-semibold text-gray-900">
+            <span class="block">Studio osteopatico</span>
+            <span class="block">Dott. Filipponi Danilo</span>
+        </h1>
         <p class="mt-2 text-sm text-gray-600">Accedi al pannello riservato dello studio.</p>
     </div>
 

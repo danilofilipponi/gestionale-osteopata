@@ -64,7 +64,10 @@ class AppointmentController extends Controller
             'appointmentsByDate' => $appointments->groupBy(fn (Appointment $appointment) => $appointment->starts_at->toDateString()),
             'statusLabels' => $this->statusLabels(),
             'pendingPatientMatches' => $pendingPatientMatches,
-            'showPatientMatchModal' => (bool) $request->session()->pull('show_patient_match_modal', false),
+            'showPatientMatchModal' => (bool) (
+                $request->session()->pull('show_patient_match_modal', false)
+                || $request->session()->pull('keep_patient_match_modal_open', false)
+            ),
         ]);
     }
 
@@ -127,7 +130,9 @@ class AppointmentController extends Controller
         ]);
         $this->syncWithGoogle($appointment);
 
-        return back()->with('status', 'Appuntamento abbinato al paziente.');
+        return back()
+            ->with('status', 'Appuntamento abbinato al paziente.')
+            ->with('keep_patient_match_modal_open', true);
     }
 
     public function ignorePatientMatch(Appointment $appointment)
@@ -136,7 +141,9 @@ class AppointmentController extends Controller
             'patient_match_status' => 'ignored',
         ]);
 
-        return back()->with('status', 'Appuntamento lasciato senza abbinamento paziente.');
+        return back()
+            ->with('status', 'Appuntamento lasciato senza abbinamento paziente.')
+            ->with('keep_patient_match_modal_open', true);
     }
 
     public function createPatientFromMatch(Appointment $appointment)

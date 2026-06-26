@@ -71,6 +71,8 @@ class InvoiceController extends Controller
 
     private function invoiceQuery(array $filters, bool $includeStatus = true)
     {
+        $hasSearch = filled($filters['search'] ?? null);
+
         return Invoice::with('patient')
             ->whereHas('patient', fn ($query) => $query->where('user_id', Auth::id()))
             ->when($filters['search'] ?? null, function ($query, string $search) {
@@ -85,8 +87,8 @@ class InvoiceController extends Controller
                 });
             })
             ->when($includeStatus && filled($filters['status'] ?? null) && $filters['status'] !== 'all', fn ($query) => $query->where('status', $filters['status']))
-            ->when($filters['summary_year'] ?? null, fn ($query, int $year) => $query->whereYear('issued_at', $year))
-            ->when($filters['summary_month'] ?? null, fn ($query, int $month) => $query->whereMonth('issued_at', $month))
+            ->when(! $hasSearch && filled($filters['summary_year'] ?? null), fn ($query) => $query->whereYear('issued_at', $filters['summary_year']))
+            ->when(! $hasSearch && filled($filters['summary_month'] ?? null), fn ($query) => $query->whereMonth('issued_at', $filters['summary_month']))
             ->when($filters['from'] ?? null, fn ($query, string $from) => $query->whereDate('issued_at', '>=', $from))
             ->when($filters['to'] ?? null, fn ($query, string $to) => $query->whereDate('issued_at', '<=', $to));
     }

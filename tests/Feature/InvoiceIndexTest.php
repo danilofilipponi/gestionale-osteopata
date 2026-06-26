@@ -93,6 +93,50 @@ class InvoiceIndexTest extends TestCase
             ->assertDontSee('Bianchi Luisa');
     }
 
+    public function test_invoice_search_ignores_selected_year_and_month(): void
+    {
+        $user = User::factory()->create();
+        $patient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+        $otherPatient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Luisa',
+            'last_name' => 'Bianchi',
+        ]);
+
+        Invoice::create([
+            'patient_id' => $patient->id,
+            'number' => '3/2026',
+            'issued_at' => '2026-05-08',
+            'service' => 'Seduta osteopatica',
+            'amount' => '40',
+            'status' => 'paid',
+        ]);
+        Invoice::create([
+            'patient_id' => $otherPatient->id,
+            'number' => '4/2026',
+            'issued_at' => '2026-06-09',
+            'service' => 'Seduta osteopatica',
+            'amount' => '40',
+            'status' => 'paid',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('invoices.index', [
+                'search' => 'Mario',
+                'summary_year' => 2026,
+                'summary_month' => 6,
+            ]))
+            ->assertOk()
+            ->assertSee('Rossi Mario')
+            ->assertSee('3/2026')
+            ->assertDontSee('Bianchi Luisa')
+            ->assertDontSee('4/2026');
+    }
+
     public function test_invoice_list_shows_red_x_when_xml_is_not_downloaded(): void
     {
         $user = User::factory()->create();

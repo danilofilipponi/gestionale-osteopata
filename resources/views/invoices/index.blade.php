@@ -13,7 +13,7 @@
 
     <div class="py-8">
         <div class="app-section space-y-6">
-            <div class="grid gap-4 md:grid-cols-4">
+            <div class="grid gap-4 md:grid-cols-3">
                 <div class="app-card p-5">
                     <p class="text-sm text-gray-500">Fatture trovate</p>
                     <p class="mt-2 text-3xl font-semibold text-gray-900">{{ $summary['count'] }}</p>
@@ -58,10 +58,6 @@
                         </form>
                     </div>
                     <p class="mt-2 text-3xl font-semibold text-gray-900">€ {{ number_format($summary['paid'], 2, ',', '.') }}</p>
-                </div>
-                <div class="app-card p-5">
-                    <p class="text-sm text-gray-500">Da incassare/emettere</p>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">€ {{ number_format($summary['open'], 2, ',', '.') }}</p>
                 </div>
             </div>
 

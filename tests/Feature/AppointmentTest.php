@@ -139,6 +139,48 @@ class AppointmentTest extends TestCase
             ->assertDontSee('<div id="patient-match-modal" data-auto-open-patient-match', false);
     }
 
+    public function test_patient_match_modal_stays_open_after_matching_action(): void
+    {
+        $user = User::factory()->create();
+        $patient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+        $appointment = Appointment::create([
+            'title' => 'Rossi Mario',
+            'starts_at' => now()->addDay()->setTime(9, 0),
+            'ends_at' => now()->addDay()->setTime(9, 45),
+            'type' => 'visit',
+            'status' => 'scheduled',
+            'google_event_id' => 'google-event-1',
+            'patient_match_status' => 'pending',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('appointments.patient-match.resolve', $appointment), [
+                'patient_id' => $patient->id,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('keep_patient_match_modal_open', true);
+
+        Appointment::create([
+            'title' => 'Bianchi Luca',
+            'starts_at' => now()->addDays(2)->setTime(9, 0),
+            'ends_at' => now()->addDays(2)->setTime(9, 45),
+            'type' => 'visit',
+            'status' => 'scheduled',
+            'google_event_id' => 'google-event-2',
+            'patient_match_status' => 'pending',
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['keep_patient_match_modal_open' => true])
+            ->get(route('appointments.index'))
+            ->assertOk()
+            ->assertSee('<div id="patient-match-modal" data-auto-open-patient-match', false);
+    }
+
     public function test_google_calendar_sync_requires_reconnect_when_token_is_revoked(): void
     {
         config([
