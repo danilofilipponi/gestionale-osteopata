@@ -13,19 +13,19 @@
 
     <div class="py-8">
         <div class="app-section space-y-6">
-            <div class="grid gap-4 md:grid-cols-3">
-                <div class="app-card p-5">
-                    <p class="text-sm text-gray-500">Fatture trovate</p>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">{{ $summary['count'] }}</p>
+            <div class="grid grid-cols-3 gap-2 md:gap-4">
+                <div class="app-card p-3 sm:p-5">
+                    <p class="text-[11px] leading-tight text-gray-500 sm:text-sm">Fatture trovate</p>
+                    <p class="mt-2 text-xl font-semibold text-gray-900 sm:text-3xl">{{ $summary['count'] }}</p>
                 </div>
-                <div class="app-card p-5">
-                    <div class="flex items-start justify-between gap-3">
-                        <p class="text-sm text-gray-500">Totale fatturato</p>
+                <div class="app-card p-3 sm:p-5">
+                    <div class="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3">
+                        <p class="text-[11px] leading-tight text-gray-500 sm:text-sm">Totale fatturato</p>
                         <form method="GET">
                             @foreach (['search', 'status', 'from', 'to', 'summary_month'] as $key)
                                 <input type="hidden" name="{{ $key }}" value="{{ $filters[$key] }}">
                             @endforeach
-                            <select name="summary_year" class="w-20 rounded-lg border-line bg-white py-1 pl-3 pr-8 text-xs font-bold text-muted shadow-sm" onchange="this.form.submit()">
+                            <select name="summary_year" class="w-[72px] rounded-lg border-line bg-white py-1 pl-2 pr-7 text-xs font-bold text-muted shadow-sm sm:w-20 sm:pl-3 sm:pr-8" onchange="this.form.submit()">
                                 @forelse ($availableYears as $year)
                                     <option value="{{ $year }}" @selected((int) $filters['summary_year'] === $year)>{{ $year }}</option>
                                 @empty
@@ -34,16 +34,16 @@
                             </select>
                         </form>
                     </div>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">€ {{ number_format($summary['total'], 2, ',', '.') }}</p>
+                    <p class="mt-2 whitespace-nowrap text-base font-semibold text-gray-900 sm:text-3xl">€ {{ number_format($summary['total'], 2, ',', '.') }}</p>
                 </div>
-                <div class="app-card p-5">
-                    <div class="flex items-start justify-between gap-3">
-                        <p class="text-sm text-gray-500">Incassato</p>
+                <div class="app-card p-3 sm:p-5">
+                    <div class="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3">
+                        <p class="text-[11px] leading-tight text-gray-500 sm:text-sm">Incassato</p>
                         <form method="GET">
                             @foreach (['search', 'status', 'from', 'to', 'summary_year'] as $key)
                                 <input type="hidden" name="{{ $key }}" value="{{ $filters[$key] }}">
                             @endforeach
-                            <select name="summary_month" class="w-28 rounded-lg border-line bg-white py-1 pl-3 pr-8 text-xs font-bold text-muted shadow-sm" onchange="this.form.submit()">
+                            <select name="summary_month" class="w-[86px] rounded-lg border-line bg-white py-1 pl-2 pr-7 text-xs font-bold text-muted shadow-sm sm:w-28 sm:pl-3 sm:pr-8" onchange="this.form.submit()">
                                 @php
                                     $months = $availableMonths->contains((int) $filters['summary_month'])
                                         ? $availableMonths
@@ -57,11 +57,11 @@
                             </select>
                         </form>
                     </div>
-                    <p class="mt-2 text-3xl font-semibold text-gray-900">€ {{ number_format($summary['paid'], 2, ',', '.') }}</p>
+                    <p class="mt-2 whitespace-nowrap text-base font-semibold text-gray-900 sm:text-3xl">€ {{ number_format($summary['paid'], 2, ',', '.') }}</p>
                 </div>
             </div>
 
-            <section class="app-card p-6">
+            <section class="app-card p-4 sm:p-6">
                 <form method="GET" class="grid gap-4 lg:grid-cols-[1fr_180px_160px_160px_auto] lg:items-end">
                     <input type="hidden" name="summary_year" value="{{ $filters['summary_year'] }}">
                     <input type="hidden" name="summary_month" value="{{ $filters['summary_month'] }}">
@@ -86,12 +86,12 @@
                         <x-text-input id="to" name="to" type="date" class="mt-1 block w-full" :value="$filters['to']" />
                     </div>
                     <div class="flex gap-3">
-                        <button class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Filtra</button>
-                        <a href="{{ route('invoices.index') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-muted shadow-sm hover:bg-mist hover:text-ink">Reset</a>
+                        <button class="flex-1 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist lg:flex-none">Filtra</button>
+                        <a href="{{ route('invoices.index') }}" class="flex-1 rounded-xl border border-line bg-white px-4 py-2.5 text-center text-sm font-bold text-muted shadow-sm hover:bg-mist hover:text-ink lg:flex-none">Reset</a>
                     </div>
                 </form>
 
-                <div class="mt-5 flex flex-wrap gap-3">
+                <div class="-mx-1 mt-5 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:gap-3 sm:overflow-visible">
                     @foreach ($statuses as $value => $label)
                         @php
                             $count = $value === 'all' ? $summary['count'] : (int) ($statusCounts[$value]->count ?? 0);
@@ -104,7 +104,7 @@
                                 'summary_month' => $filters['summary_month'],
                             ]));
                         @endphp
-                        <a href="{{ $statusUrl }}" class="rounded-xl border border-line px-4 py-2 text-sm font-bold {{ $filters['status'] === $value ? 'bg-sage text-white' : 'bg-white text-muted hover:bg-mist hover:text-ink' }}">
+                        <a href="{{ $statusUrl }}" class="shrink-0 rounded-xl border border-line px-4 py-2 text-sm font-bold {{ $filters['status'] === $value ? 'bg-sage text-white' : 'bg-white text-muted hover:bg-mist hover:text-ink' }}">
                             {{ $label }} - {{ $count }}
                         </a>
                     @endforeach
@@ -116,7 +116,46 @@
                     <h3 class="font-semibold text-gray-900">Fatture di {{ $monthLabels[(int) $filters['summary_month']] }} {{ $filters['summary_year'] }}</h3>
                     <p class="mt-1 text-sm text-muted">L'elenco segue l'anno e il mese selezionati nei riquadri Totale fatturato e Incassato.</p>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="divide-y divide-line bg-white md:hidden">
+                    @forelse ($invoices as $invoice)
+                        <a href="{{ route('patients.invoices.index', ['patient' => $invoice->patient, 'open_invoice' => $invoice->id]) }}#invoice-{{ $invoice->id }}" class="block p-4 transition hover:bg-mist">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-ink">{{ $invoice->number ?: 'Senza numero' }}</span>
+                                        <span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $invoice->status === 'paid' ? 'bg-emerald-50 text-emerald-700' : ($invoice->status === 'cancelled' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700') }}">
+                                            {{ $statuses[$invoice->status] ?? $invoice->status }}
+                                        </span>
+                                    </div>
+                                    <p class="mt-1 truncate font-semibold text-gray-900">{{ $invoice->patient->list_name }}</p>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <p class="font-bold text-ink">€ {{ number_format($invoice->amount, 2, ',', '.') }}</p>
+                                    <p class="mt-1 text-xs text-muted">{{ $invoice->issued_at?->format('d/m/Y') }}</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3">
+                                <p class="min-w-0 truncate text-sm text-gray-700">{{ $invoice->service ?: 'Prestazione non indicata' }}</p>
+                                <span class="inline-flex shrink-0 items-center gap-1.5 text-xs font-bold {{ $invoice->xml_downloaded_at ? 'text-emerald-700' : 'text-red-700' }}">
+                                    @if ($invoice->xml_downloaded_at)
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="m20 6-11 11-5-5" />
+                                        </svg>
+                                        Inviata
+                                    @else
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M18 6 6 18M6 6l12 12" />
+                                        </svg>
+                                        Non inviata
+                                    @endif
+                                </span>
+                            </div>
+                        </a>
+                    @empty
+                        <div class="px-5 py-10 text-center text-gray-500">Nessuna fattura trovata.</div>
+                    @endforelse
+                </div>
+                <div class="hidden overflow-x-auto md:block">
                     <table class="w-full min-w-[1080px] text-left text-sm">
                         <thead>
                             <tr class="border-b border-line bg-mist text-xs uppercase text-muted">
