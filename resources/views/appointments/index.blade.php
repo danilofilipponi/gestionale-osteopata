@@ -44,6 +44,10 @@
             ->map(fn ($calendarId) => trim((string) $calendarId))
             ->filter()
             ->values();
+        $mobileDate = $date->copy();
+        $mobileDayEvents = $appointmentsByDate->get($mobileDate->toDateString(), collect());
+        $mobilePrevDate = $mobileDate->copy()->subDay();
+        $mobileNextDate = $mobileDate->copy()->addDay();
     @endphp
 
     <x-slot name="header">
@@ -76,7 +80,80 @@
                 </div>
             @endif
 
-            <section class="app-card overflow-hidden">
+            <section class="app-card overflow-hidden md:hidden">
+                <div class="border-b border-line bg-white px-4 py-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <a href="{{ route('appointments.index', ['view' => 'day', 'date' => $mobilePrevDate->toDateString()]) }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-white text-2xl font-bold text-sage shadow-sm" aria-label="Giorno precedente">
+                            &lsaquo;
+                        </a>
+                        <div class="min-w-0 text-center">
+                            <p class="text-xs font-bold uppercase text-muted">Agenda giornaliera</p>
+                            <h3 class="truncate text-lg font-bold text-ink">{{ $mobileDate->translatedFormat('l d F Y') }}</h3>
+                        </div>
+                        <a href="{{ route('appointments.index', ['view' => 'day', 'date' => $mobileNextDate->toDateString()]) }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-white text-2xl font-bold text-sage shadow-sm" aria-label="Giorno successivo">
+                            &rsaquo;
+                        </a>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-2 gap-2">
+                        <a href="{{ route('appointments.index', ['view' => 'day', 'date' => now()->toDateString()]) }}" class="rounded-xl border border-line bg-white px-4 py-3 text-center text-sm font-bold text-muted shadow-sm">
+                            Oggi
+                        </a>
+                        <button
+                            type="button"
+                            class="rounded-xl bg-sage px-4 py-3 text-sm font-bold text-white shadow-sm"
+                            data-mobile-new-appointment
+                            data-start="{{ $mobileDate->copy()->setTimeFromTimeString($settings['agenda_start_time'])->format('Y-m-d\TH:i') }}"
+                            data-end="{{ $mobileDate->copy()->setTimeFromTimeString($settings['agenda_start_time'])->addMinutes((int) $settings['agenda_default_duration'])->format('Y-m-d\TH:i') }}"
+                        >
+                            Nuovo appuntamento
+                        </button>
+                    </div>
+                </div>
+
+                <div class="divide-y divide-line bg-white">
+                    @forelse ($mobileDayEvents as $appointment)
+                        @php
+                            $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                            $unmatchedPatient = blank($appointment->patient_id)
+                                && filled($appointment->google_event_id)
+                                && filled($appointment->google_calendar_id)
+                                && $syncPatientCalendarIds->contains(trim((string) $appointment->google_calendar_id));
+                        @endphp
+                        <button
+                            type="button"
+                            data-appointment-modal="appointment-modal-{{ $appointment->id }}"
+                            class="relative block w-full bg-white px-4 py-4 text-left"
+                            style="border-left: 6px solid {{ $appointmentColor }};"
+                        >
+                            @if ($unmatchedPatient)
+                                <span title="Paziente non abbinato" style="position:absolute; top:12px; right:12px; z-index:80; display:block; width:12px; height:12px; border-radius:9999px; background:#dc2626; border:2px solid #ffffff; box-shadow:0 1px 4px rgba(15,23,42,.35);"></span>
+                            @endif
+                            <div class="grid grid-cols-[86px_1fr] gap-3">
+                                <div class="border-r border-line pr-3">
+                                    <p class="text-sm font-black text-ink">{{ $appointment->starts_at->format('H:i') }}</p>
+                                    <p class="mt-1 text-xs font-bold text-muted">{{ $appointment->ends_at->format('H:i') }}</p>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="truncate text-base font-black text-ink">{{ $appointment->title }}</p>
+                                    <p class="mt-1 truncate text-sm font-semibold text-muted">{{ $appointment->patient?->list_name ?: ($categoryMap->get($appointment->type)['label'] ?? 'Impegno personale') }}</p>
+                                    <div class="mt-2 inline-flex items-center gap-2 rounded-full bg-mist px-3 py-1 text-xs font-bold text-sage">
+                                        <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ $appointmentColor }}"></span>
+                                        {{ $categoryMap->get($appointment->type)['label'] ?? $appointment->type }}
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+                    @empty
+                        <div class="px-4 py-10 text-center">
+                            <p class="text-base font-bold text-ink">Nessun appuntamento</p>
+                            <p class="mt-1 text-sm text-muted">La giornata selezionata non ha appuntamenti in agenda.</p>
+                        </div>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="app-card hidden overflow-hidden md:block">
                 <div class="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-white px-5 py-4">
                     <div class="flex flex-wrap items-center gap-3">
                         <a href="{{ route('appointments.index', ['view' => $view, 'date' => $prevDate->toDateString()]) }}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white text-xl font-bold text-sage shadow-sm hover:bg-mist" aria-label="Periodo precedente">
@@ -545,11 +622,17 @@
 
             document.addEventListener('click', (event) => {
                 const opener = event.target.closest('[data-appointment-modal]');
+                const mobileNewAppointment = event.target.closest('[data-mobile-new-appointment]');
                 const dayColumn = event.target.closest('[data-agenda-day]');
                 const closer = event.target.closest('[data-close-appointment-modal], [data-close-agenda-modal], [data-close-patient-match-modal]');
                 const patientResult = event.target.closest('[data-patient-result-id]');
                 const toggleLinkPatient = event.target.closest('[data-toggle-link-patient]');
                 const linkPatientResult = event.target.closest('[data-link-patient-result-id]');
+
+                if (mobileNewAppointment) {
+                    fillNewAppointmentModal(new Date(mobileNewAppointment.dataset.start), new Date(mobileNewAppointment.dataset.end));
+                    return;
+                }
 
                 if (toggleLinkPatient) {
                     const form = toggleLinkPatient.closest('form');
