@@ -72,7 +72,23 @@
                             </form>
                         </div>
 
-                        <div class="-mx-3 mt-5 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+                        <div class="mt-5 space-y-3 md:hidden">
+                            @foreach ($monthlyRows as $row)
+                                @php
+                                    $mobileChartValue = (float) $row[$chartMetric];
+                                    $mobileChartWidth = $mobileChartValue > 0 ? max(3, round(($mobileChartValue / $maxRevenue) * 100)) : 0;
+                                @endphp
+                                <div class="grid grid-cols-[34px_1fr_auto] items-center gap-2">
+                                    <span class="text-xs font-bold text-muted">{{ $row['short_label'] }}</span>
+                                    <div class="h-5 overflow-hidden rounded-sm border border-[#9bc4e2] bg-[#edf6fc]">
+                                        <div class="h-full bg-[#73b4df]" style="width: {{ $mobileChartWidth }}%;"></div>
+                                    </div>
+                                    <span class="min-w-[82px] text-right text-xs font-bold text-ink">€ {{ number_format($mobileChartValue, 2, ',', '.') }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <div class="-mx-3 mt-5 hidden overflow-x-auto px-3 sm:mx-0 sm:px-0 md:block">
                         <div class="min-w-[680px] lg:min-w-0" style="display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px;">
                             <div style="height: 260px; position: relative; color: #6b7f7a; font-size: 11px; font-weight: 700;">
                                 @foreach ([100, 75, 50, 25, 0] as $tick)
@@ -105,7 +121,7 @@
                         </div>
                         </div>
 
-                        <div class="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-ink">
+                        <div class="mt-4 hidden items-center justify-center gap-2 text-xs font-semibold text-ink md:flex">
                             <span class="inline-block h-3 w-3 border border-[#0070c9] bg-[#dceeff]"></span>
                             {{ $chartLabel }}
                         </div>

@@ -1,19 +1,108 @@
 <x-app-layout>
+    <style>
+        @media (max-width: 767px) {
+            .settings-page .app-card.p-6,
+            .settings-page form.p-6 {
+                padding: 1rem;
+            }
+
+            .settings-stack-table {
+                overflow: visible !important;
+            }
+
+            .settings-stack-table table,
+            .settings-stack-table tbody {
+                display: block;
+                min-width: 0 !important;
+                width: 100%;
+            }
+
+            .settings-stack-table thead {
+                display: none;
+            }
+
+            .settings-stack-table tr {
+                background: #fff;
+                border: 1px solid #c8d9d5;
+                border-radius: 12px;
+                display: block;
+                margin-bottom: 12px;
+                padding: 12px;
+            }
+
+            .settings-stack-table td {
+                display: block;
+                padding: 6px 0 !important;
+                width: 100%;
+            }
+
+            .settings-stack-table td::before {
+                color: #6b7f7a;
+                display: block;
+                font-size: 10px;
+                font-weight: 700;
+                margin-bottom: 5px;
+                text-transform: uppercase;
+            }
+
+            .settings-stack-table input:not([type="checkbox"]):not([type="color"]),
+            .settings-stack-table select {
+                min-width: 0 !important;
+                width: 100% !important;
+            }
+
+            .settings-services-table td:nth-of-type(1)::before { content: "Servizio"; }
+            .settings-services-table td:nth-of-type(2)::before { content: "Descrizione"; }
+            .settings-services-table td:nth-of-type(3)::before { content: "Costo"; }
+            .settings-services-table td:nth-of-type(4)::before { content: "Aliquota"; }
+            .settings-services-table td:nth-of-type(5)::before { content: "Cassa"; }
+            .settings-services-table td:nth-of-type(6)::before { content: "Natura"; }
+            .settings-services-table td:nth-of-type(7)::before { content: "IVA"; }
+            .settings-services-table td:nth-of-type(8)::before { content: "Bollo"; }
+            .settings-services-table td:nth-of-type(9)::before { content: "Totale"; }
+
+            .settings-agenda-table td:nth-of-type(1)::before { content: "Categoria"; }
+            .settings-agenda-table td:nth-of-type(2)::before { content: "Colore"; }
+            .settings-agenda-table td:nth-of-type(3)::before { content: "Calendario Google"; }
+            .settings-agenda-table td:nth-of-type(4)::before { content: "Sincronizza pazienti"; }
+            .settings-agenda-table td:nth-of-type(5)::before { content: "Anteprima"; }
+
+            .settings-rates-table td:nth-of-type(1)::before { content: "Attiva"; }
+            .settings-rates-table td:nth-of-type(2)::before { content: "Predefinita"; }
+            .settings-rates-table td:nth-of-type(3)::before { content: "Prestazione"; }
+            .settings-rates-table td:nth-of-type(4)::before { content: "Tariffa"; }
+        }
+    </style>
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">Impostazioni</h2>
                 <p class="mt-1 text-sm text-gray-500">Configurazione di base dello studio e area amministrativa.</p>
             </div>
-            <a href="{{ route('profile.edit') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Profilo account</a>
+            <a href="{{ route('profile.edit') }}" class="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-center text-sm font-bold text-ink shadow-sm hover:bg-mist sm:w-auto">Profilo account</a>
         </div>
     </x-slot>
 
-    <div class="py-8">
+    <div class="settings-page py-8">
         <div class="app-section space-y-6">
             @if (session('status'))
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
             @endif
+
+            <div class="app-card p-4 lg:hidden">
+                <label for="mobile_settings_section" class="text-xs font-bold uppercase text-muted">Sezione impostazioni</label>
+                <select id="mobile_settings_section" class="app-field mt-2 block w-full font-bold" onchange="if (this.value) window.location.href = this.value">
+                    <option value="{{ route('settings.edit') }}" @selected($section === 'studio')>Dati studio</option>
+                    <option value="{{ route('settings.patients') }}" @selected($section === 'patients')>Impostazioni pazienti</option>
+                    <option value="{{ route('settings.sessions') }}" @selected($section === 'sessions')>Impostazioni sedute</option>
+                    <option value="{{ route('settings.agenda') }}" @selected($section === 'agenda')>Impostazioni agenda</option>
+                    <option value="{{ route('settings.invoices') }}" @selected($section === 'invoices')>Impostazioni fatture</option>
+                    <option value="{{ route('settings.accounting') }}" @selected($section === 'accounting')>Impostazioni contabilita</option>
+                    <option value="{{ route('settings.privacy') }}" @selected($section === 'privacy')>Impostazioni privacy</option>
+                    <option value="{{ route('settings.users') }}" @selected($section === 'users')>Utenti e password</option>
+                    <option value="{{ route('settings.backup') }}" @selected($section === 'backup')>Backup ed esportazioni</option>
+                </select>
+            </div>
 
             <div class="grid gap-6 lg:grid-cols-[1fr_340px]">
                 <div class="space-y-6">
@@ -381,7 +470,7 @@
 
                             <div class="mt-8">
                                 <h4 class="text-sm font-bold uppercase text-muted">Servizi selezionabili in fattura</h4>
-                                <div class="mt-4 overflow-x-auto">
+                                <div class="settings-stack-table settings-services-table mt-4 overflow-x-auto">
                                     <table class="w-full min-w-[980px] text-left text-sm">
                                         <thead>
                                             <tr class="border-b border-line text-xs uppercase text-muted">
@@ -620,7 +709,7 @@
                             <h3 class="font-semibold text-gray-900">Categorie appuntamento</h3>
                             <p class="mt-1 text-sm text-gray-500">Le categorie attive compaiono nella tendina della pagina agenda e ne determinano il colore.</p>
 
-                            <div class="mt-5 overflow-x-auto">
+                            <div class="settings-stack-table settings-agenda-table mt-5 overflow-x-auto">
                                 <table class="w-full min-w-[760px] text-left text-sm">
                                     <thead>
                                         <tr class="border-b border-line text-xs uppercase text-muted">
@@ -803,7 +892,7 @@
                                 <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Tariffe</span>
                             </div>
 
-                            <div class="mt-5 overflow-x-auto">
+                            <div class="settings-stack-table settings-rates-table mt-5 overflow-x-auto">
                                 <table class="w-full min-w-[760px] text-left text-sm">
                                     <thead>
                                         <tr class="border-b border-line text-xs uppercase text-muted">
@@ -1231,7 +1320,7 @@
                     @endif
                 </div>
 
-                <aside class="space-y-6">
+                <aside class="hidden space-y-6 lg:block">
                     <section class="app-card p-6">
                         <h3 class="font-semibold text-gray-900">Area amministrativa</h3>
                         <div class="mt-4 space-y-3">
