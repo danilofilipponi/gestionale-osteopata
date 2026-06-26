@@ -241,7 +241,9 @@ class SettingsTest extends TestCase
         $zip->close();
         unlink($path);
 
-        $this->assertStringContainsString('<FatturaElettronica', $xml);
+        $this->assertStringContainsString('<p:FatturaElettronica', $xml);
+        $this->assertStringContainsString('xmlns:p="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2"', $xml);
+        $this->assertStringContainsString("<FatturaElettronicaHeader>\n    <DatiTrasmissione>", $xml);
         $this->assertStringContainsString('<Numero>3/2026</Numero>', $xml);
         $this->assertStringContainsString('<ImportoTotaleDocumento>40.00</ImportoTotaleDocumento>', $xml);
         $this->assertNotNull($invoice->fresh()->xml_downloaded_at);

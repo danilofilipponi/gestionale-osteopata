@@ -36,9 +36,17 @@ class InvoiceXmlExporter
         $document = new \DOMDocument('1.0', 'utf-8');
         $document->formatOutput = true;
 
-        $root = $document->createElement('FatturaElettronica');
+        $root = $document->createElementNS(
+            'http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2',
+            'p:FatturaElettronica'
+        );
         $root->setAttribute('versione', $settings['invoice_transmission_format']);
-        $root->setAttribute('xmlns', 'http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2');
+        $root->setAttribute('xmlns:ds', 'http://www.w3.org/2000/09/xmldsig#');
+        $root->setAttribute('xmlns:xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+        $root->setAttribute(
+            'xsi:schemaLocation',
+            'http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2 http://www.fatturapa.gov.it/export/fatturazione/sdi/fatturapa/v1.2/Schema_del_file_xml_FatturaPA_versione_1.2.xsd'
+        );
         $document->appendChild($root);
 
         $header = self::append($document, $root, 'FatturaElettronicaHeader');
