@@ -34,7 +34,7 @@
                     </select>
                 </form>
             </div>
-            <a href="{{ route('settings.accounting') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">
+            <a href="{{ route('settings.accounting') }}" class="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-center text-sm font-bold text-ink shadow-sm hover:bg-mist sm:w-auto">
                 Impostazioni contabilita
             </a>
         </div>
@@ -55,7 +55,7 @@
                         </div>
                     </aside>
 
-                    <div class="p-4">
+                    <div class="p-3 sm:p-4">
                         <div class="relative flex flex-wrap items-center justify-between gap-4">
                             <div class="flex flex-1 items-center justify-center">
                                 <h3 class="text-xl font-black text-ink">{{ $chartLabel }} {{ $selectedYear }}</h3>
@@ -72,7 +72,8 @@
                             </form>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; margin-top: 20px;">
+                        <div class="-mx-3 mt-5 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+                        <div class="min-w-[680px] lg:min-w-0" style="display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px;">
                             <div style="height: 260px; position: relative; color: #6b7f7a; font-size: 11px; font-weight: 700;">
                                 @foreach ([100, 75, 50, 25, 0] as $tick)
                                     @php
@@ -102,6 +103,7 @@
                                 </div>
                             </div>
                         </div>
+                        </div>
 
                         <div class="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-ink">
                             <span class="inline-block h-3 w-3 border border-[#0070c9] bg-[#dceeff]"></span>
@@ -122,7 +124,38 @@
                             <h3 class="mt-1 text-lg font-semibold text-gray-900">Riepilogo mensile</h3>
                         </div>
                     </div>
-                    <div class="overflow-x-auto" style="width: 100%; flex: 1;">
+                    <div class="divide-y divide-line md:hidden" style="background: #eefaf4;">
+                        @foreach ($monthlyRows as $row)
+                            <div class="p-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="font-bold text-ink">{{ $row['label'] }}</p>
+                                    <p class="font-bold text-sage">€ {{ number_format($row['total_income'], 2, ',', '.') }}</p>
+                                </div>
+                                <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+                                    <div class="rounded-lg border border-line bg-white/70 p-2.5">
+                                        <p class="font-bold uppercase text-muted">Fatturato</p>
+                                        <p class="mt-1 font-semibold text-ink">€ {{ number_format($row['invoiced'], 2, ',', '.') }}</p>
+                                    </div>
+                                    <div class="rounded-lg border border-line bg-white/70 p-2.5">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <p class="font-bold uppercase text-muted">Da fatturare</p>
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line bg-white text-xs font-black text-sage"
+                                                @click="toInvoiceMonth = {{ $row['month'] }}; toInvoiceInfoModal = true"
+                                            >i</button>
+                                        </div>
+                                        <p class="mt-1 font-semibold text-ink">€ {{ number_format($row['to_invoice'], 2, ',', '.') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                        <div class="flex items-center justify-between gap-3 p-4 font-black" style="background: #d4f0e1;">
+                            <span>Totale</span>
+                            <span class="text-sage">€ {{ number_format($yearTotalIncome, 2, ',', '.') }}</span>
+                        </div>
+                    </div>
+                    <div class="hidden overflow-x-auto md:block" style="width: 100%; flex: 1;">
                         <table class="text-sm" style="width: 100%; table-layout: fixed;">
                             <thead class="bg-mist text-xs font-bold uppercase text-muted">
                                 <tr style="height: 42px;">
@@ -176,7 +209,26 @@
                         </div>
                         <button type="button" class="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink shadow-sm hover:bg-mist" @click="expensesModal = true">Carica spese</button>
                     </div>
-                    <div class="overflow-x-auto" style="width: 100%; flex: 1;">
+                    <div class="divide-y divide-line md:hidden" style="background: #fff0f0;">
+                        @foreach ($monthlyRows as $row)
+                            <div class="flex items-center justify-between gap-3 p-4">
+                                <p class="font-bold text-ink">{{ $row['label'] }}</p>
+                                <div class="flex items-center gap-3">
+                                    <p class="font-semibold text-ink">€ {{ number_format($row['expenses'], 2, ',', '.') }}</p>
+                                    <button
+                                        type="button"
+                                        class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-line bg-white text-xs font-black text-sage"
+                                        @click='expenseInfoTitle = @json($row["label"]); expenseInfoRows = @json($row["expense_details"]); expenseInfoModal = true'
+                                    >i</button>
+                                </div>
+                            </div>
+                        @endforeach
+                        <div class="flex items-center justify-between gap-3 p-4 font-black" style="background: #ffd7d7;">
+                            <span>Totale</span>
+                            <span>€ {{ number_format($yearExpenses, 2, ',', '.') }}</span>
+                        </div>
+                    </div>
+                    <div class="hidden overflow-x-auto md:block" style="width: 100%; flex: 1;">
                         <table class="text-sm" style="width: 100%; table-layout: fixed;">
                             <thead class="bg-mist text-xs font-bold uppercase text-muted">
                                 <tr style="height: 42px;">
@@ -212,7 +264,7 @@
                 </div>
             </section>
 
-            <section class="app-card p-6">
+            <section class="app-card p-4 sm:p-6">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="flex items-center gap-3">
                         <span class="accounting-icon">
@@ -297,8 +349,8 @@
                 </div>
             </section>
 
-            <div x-cloak x-show="expensesModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-                <div class="w-full max-w-2xl rounded-2xl border border-line bg-white p-6 shadow-2xl" @click.outside="expensesModal = false">
+            <div x-cloak x-show="expensesModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-0 sm:p-4">
+                <div class="h-full max-h-dvh w-full max-w-2xl overflow-y-auto bg-white p-4 shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl sm:border sm:border-line sm:p-6" @click.outside="expensesModal = false">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-bold uppercase text-muted">Uscite</p>
@@ -350,8 +402,8 @@
                 </div>
             </div>
 
-            <div x-cloak x-show="toInvoiceInfoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-                <div class="w-full max-w-4xl rounded-2xl border border-line bg-white p-6 shadow-2xl" @click.outside="toInvoiceInfoModal = false">
+            <div x-cloak x-show="toInvoiceInfoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-0 sm:p-4">
+                <div class="h-full max-h-dvh w-full max-w-4xl overflow-y-auto bg-white p-4 shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl sm:border sm:border-line sm:p-6" @click.outside="toInvoiceInfoModal = false">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-bold uppercase text-muted">Da fatturare</p>
@@ -367,8 +419,8 @@
                     </div>
 
                     @foreach ($monthlyRows as $row)
-                        <div x-show="toInvoiceMonth === {{ $row['month'] }}" class="mt-5 overflow-hidden rounded-xl border border-line">
-                            <table class="min-w-full text-sm">
+                        <div x-show="toInvoiceMonth === {{ $row['month'] }}" class="mt-5 overflow-x-auto rounded-xl border border-line">
+                            <table class="min-w-[720px] text-sm">
                                 <thead class="bg-mist text-xs font-bold uppercase text-muted">
                                     <tr>
                                         <th class="px-4 py-3 text-left" style="width: 18%;">Data</th>
@@ -442,8 +494,8 @@
                 </div>
             </div>
 
-            <div x-cloak x-show="expenseInfoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
-                <div class="w-full max-w-2xl rounded-2xl border border-line bg-white p-6 shadow-2xl" @click.outside="expenseInfoModal = false">
+            <div x-cloak x-show="expenseInfoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-0 sm:p-4">
+                <div class="h-full max-h-dvh w-full max-w-2xl overflow-y-auto bg-white p-4 shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl sm:border sm:border-line sm:p-6" @click.outside="expenseInfoModal = false">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-bold uppercase text-muted">Dettaglio spese</p>
@@ -451,8 +503,8 @@
                         </div>
                         <button type="button" class="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink hover:bg-mist" @click="expenseInfoModal = false">Chiudi</button>
                     </div>
-                    <div class="mt-5 overflow-hidden rounded-xl border border-line">
-                        <table class="min-w-full text-sm">
+                    <div class="mt-5 overflow-x-auto rounded-xl border border-line">
+                        <table class="min-w-[520px] text-sm">
                             <thead class="bg-mist text-xs font-bold uppercase text-muted">
                                 <tr>
                                     <th class="px-4 py-3 text-left">Data</th>

@@ -35,9 +35,9 @@
     <input name="notes" class="app-field py-2" value="{{ $appointment->notes }}" placeholder="Note">
     <input type="hidden" name="color" value="{{ $appointment->color }}">
 
-    <div class="flex items-center justify-between gap-3">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button form="delete-appointment-{{ $appointment->id }}" class="text-sm font-bold text-red-700 hover:text-red-900" onclick="return confirm('Eliminare questo appuntamento?')">Elimina</button>
-        <div class="flex items-center gap-2">
+        <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
             <button type="button" class="rounded-xl border border-sage bg-white px-3 py-2 text-sm font-bold text-sage hover:bg-mist" data-toggle-link-patient>Collega</button>
             <a
                 href="{{ route('patients.create', ['appointment_id' => $appointment->id, 'last_name' => $appointmentNameParts[0] ?? '', 'first_name' => $appointmentNameParts[1] ?? '']) }}"
@@ -45,7 +45,7 @@
             >Nuovo paziente</a>
             <a
                 href="{{ $appointment->patient_id ? route('patients.show', $appointment->patient_id) : '#' }}"
-                class="{{ $appointment->patient_id ? 'inline-flex' : 'hidden' }} rounded-xl border border-line bg-white px-3 py-2 text-sm font-bold text-ink hover:bg-mist"
+                class="{{ $appointment->patient_id ? 'inline-flex' : 'hidden' }} items-center justify-center rounded-xl border border-line bg-white px-3 py-2 text-center text-sm font-bold text-ink hover:bg-mist"
                 data-patient-folder-link
             >Cartella paziente</a>
             <button class="rounded-xl bg-sage px-3 py-2 text-sm font-bold text-white hover:bg-[#4f7f75]">Salva</button>

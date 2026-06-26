@@ -5,9 +5,9 @@
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">Cartella paziente: {{ $patient->full_name }}</h2>
                 <p class="mt-1 text-sm text-gray-500">{{ $patient->phone ?: 'Telefono non inserito' }} - {{ $patient->email ?: 'Email non inserita' }}</p>
             </div>
-            <div class="flex flex-wrap gap-3">
-                <a href="{{ route('patients.edit', $patient) }}" class="rounded-xl bg-sage px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75]">Modifica anagrafica</a>
-                <a href="{{ route('patients.index') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Torna ai pazienti</a>
+            <div class="flex w-full gap-2 sm:w-auto sm:flex-wrap sm:gap-3">
+                <a href="{{ route('patients.edit', $patient) }}" class="flex-1 rounded-xl bg-sage px-3 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75] sm:flex-none sm:px-4">Modifica anagrafica</a>
+                <a href="{{ route('patients.index') }}" class="flex-1 rounded-xl border border-line bg-white px-3 py-2.5 text-center text-sm font-bold text-ink shadow-sm hover:bg-mist sm:flex-none sm:px-4">Torna ai pazienti</a>
             </div>
         </div>
     </x-slot>
@@ -18,12 +18,12 @@
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
             @endif
 
-            <div class="grid gap-4 md:grid-cols-5">
-                <a href="{{ route('patients.show', $patient) }}" class="rounded-2xl border p-4 text-sm font-bold shadow-card {{ $section === 'anagrafica' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Anagrafica</a>
-                <a href="{{ route('patients.anamnesis.index', $patient) }}" class="rounded-2xl border p-4 text-sm font-bold shadow-card {{ $section === 'anamnesi' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Anamnesi</a>
-                <a href="{{ route('patients.sessions.index', $patient) }}" class="rounded-2xl border p-4 text-sm font-bold shadow-card {{ $section === 'sedute' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Storico sedute</a>
-                <a href="{{ route('patients.invoices.index', $patient) }}" class="rounded-2xl border p-4 text-sm font-bold shadow-card {{ $section === 'fatture' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Storico fatture</a>
-                <a href="{{ route('patients.privacy.index', $patient) }}" class="rounded-2xl border p-4 text-sm font-bold shadow-card {{ $section === 'privacy' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Privacy e consenso</a>
+            <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-5 md:gap-4 md:overflow-visible md:px-0 md:pb-0">
+                <a href="{{ route('patients.show', $patient) }}" class="shrink-0 rounded-xl border px-4 py-3 text-sm font-bold shadow-card md:rounded-2xl md:p-4 {{ $section === 'anagrafica' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Anagrafica</a>
+                <a href="{{ route('patients.anamnesis.index', $patient) }}" class="shrink-0 rounded-xl border px-4 py-3 text-sm font-bold shadow-card md:rounded-2xl md:p-4 {{ $section === 'anamnesi' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Anamnesi</a>
+                <a href="{{ route('patients.sessions.index', $patient) }}" class="shrink-0 rounded-xl border px-4 py-3 text-sm font-bold shadow-card md:rounded-2xl md:p-4 {{ $section === 'sedute' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Storico sedute</a>
+                <a href="{{ route('patients.invoices.index', $patient) }}" class="shrink-0 rounded-xl border px-4 py-3 text-sm font-bold shadow-card md:rounded-2xl md:p-4 {{ $section === 'fatture' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Storico fatture</a>
+                <a href="{{ route('patients.privacy.index', $patient) }}" class="shrink-0 rounded-xl border px-4 py-3 text-sm font-bold shadow-card md:rounded-2xl md:p-4 {{ $section === 'privacy' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Privacy e consenso</a>
             </div>
 
             @if ($section === 'anagrafica')
@@ -77,15 +77,15 @@
                     ['file', 'CAP', $patient->postal_code ?: $missing],
                 ];
             @endphp
-            <section id="anagrafica" class="app-card p-6">
+            <section id="anagrafica" class="app-card p-4 sm:p-6">
                 <div class="flex flex-wrap items-start justify-between gap-5">
                     <div class="flex items-center gap-4">
-                        <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-teal-100 bg-teal-50 text-teal-600 shadow-card">
+                        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-teal-100 bg-teal-50 text-teal-600 shadow-card sm:h-20 sm:w-20">
                             {!! $icon('user') !!}
                         </div>
                         <div>
                             <p class="text-xs font-bold uppercase text-muted">Anagrafica paziente</p>
-                            <h3 class="mt-1 text-2xl font-bold text-sage">{{ $patient->full_name }}</h3>
+                            <h3 class="mt-1 text-xl font-bold text-sage sm:text-2xl">{{ $patient->full_name }}</h3>
                             <p class="mt-1 text-sm text-muted">ID {{ $patient->legacy_patient_id ?: $patient->id }}{{ $patient->customer_type ? ' - '.$patient->customer_type : '' }}</p>
                         </div>
                     </div>
@@ -239,7 +239,7 @@
                     ],
                 ];
             @endphp
-            <section id="anamnesi" class="app-card p-6">
+            <section id="anamnesi" class="app-card p-4 sm:p-6">
                 <div class="flex flex-wrap items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
                         <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-teal-100 bg-teal-50 text-teal-600 shadow-card">
@@ -371,7 +371,7 @@
                 $hasPreferredRateInList = collect($sessionRates)->contains(fn ($rate) => (float) ($rate['amount'] ?? 0) === $selectedSessionFee
                     && ($rate['name'] ?? '') === $selectedSessionTitle);
             @endphp
-            <section id="sedute" class="app-card p-6">
+            <section id="sedute" class="app-card p-4 sm:p-6">
                 <div class="flex flex-wrap items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
                         <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-teal-100 bg-teal-50 text-teal-600 shadow-card">
@@ -391,9 +391,9 @@
                     <input type="hidden" name="objective" value="{{ old('objective') }}">
                     <input type="hidden" name="outcome" value="{{ old('outcome') }}">
                     <input type="hidden" name="fee" value="{{ $selectedSessionFee }}" data-session-fee>
-                    <div style="display: flex; align-items: stretch; gap: 16px; width: 100%;">
-                        <div style="display: grid; grid-template-columns: 140px 128px; gap: 8px; width: 276px; flex: 0 0 276px;">
-                            <div class="rounded-md border border-line bg-mist/40 p-3">
+                    <div class="flex w-full flex-col items-stretch gap-4 lg:flex-row">
+                        <div class="grid min-w-0 grid-cols-2 gap-2 lg:w-[276px] lg:flex-none lg:grid-cols-[140px_128px]">
+                            <div class="min-w-0 rounded-md border border-line bg-mist/40 p-3">
                                 <div class="flex items-center gap-2 text-xs font-bold uppercase text-muted">
                                     <svg class="h-4 w-4 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M8 2v4" />
@@ -405,7 +405,7 @@
                                 </div>
                                 <x-text-input id="session_date" name="session_date" type="date" class="mt-2 block w-full text-sm font-bold" :value="old('session_date', now()->toDateString())" required />
                             </div>
-                            <div class="rounded-md border border-line bg-mist/40 p-3">
+                            <div class="min-w-0 rounded-md border border-line bg-mist/40 p-3">
                                 <label for="session_rate" class="flex items-center gap-2 text-xs font-bold uppercase text-muted">
                                     <svg class="h-4 w-4 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M12 1v22" />
@@ -428,7 +428,7 @@
                             </div>
                         </div>
 
-                        <div data-pain-slider class="rounded-md border border-line bg-white p-3" style="flex: 1 1 auto; min-width: 0;">
+                        <div data-pain-slider class="min-w-0 flex-1 rounded-md border border-line bg-white p-3">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="flex items-center gap-2 text-xs font-bold uppercase text-muted">
                                     <svg class="h-4 w-4 text-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -567,13 +567,13 @@
                                     <input type="hidden" name="outcome" value="{{ $session->outcome }}">
                                     <input type="hidden" name="fee" value="{{ $session->fee ?? ($defaultSessionRate['amount'] ?? 0) }}" data-session-fee>
                                     <input type="hidden" name="paid" value="{{ $session->paid ? 1 : 0 }}">
-                                    <div style="display: flex; align-items: stretch; gap: 16px; width: 100%;">
-                                        <div style="display: grid; grid-template-columns: 140px 128px; gap: 8px; width: 276px; flex: 0 0 276px;">
-                                            <div>
+                                    <div class="flex w-full flex-col items-stretch gap-4 lg:flex-row">
+                                        <div class="grid min-w-0 grid-cols-2 gap-2 lg:w-[276px] lg:flex-none lg:grid-cols-[140px_128px]">
+                                            <div class="min-w-0">
                                                 <x-input-label value="Data seduta" />
                                                 <x-text-input name="session_date" type="date" class="mt-1 block w-full" :value="$session->session_date?->toDateString()" required />
                                             </div>
-                                            <div>
+                                            <div class="min-w-0">
                                                 <x-input-label value="Tariffa" />
                                                 <select class="app-field mt-1 block w-full" onchange="const option = this.options[this.selectedIndex]; const form = this.closest('form'); form.querySelector('[data-session-title]').value = option.value; form.querySelector('[data-session-fee]').value = option.dataset.amount || 0;">
                                                     @foreach ($sessionRates as $rate)
@@ -584,7 +584,7 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        <div data-pain-slider style="flex: 1 1 auto; min-width: 0;">
+                                        <div data-pain-slider class="min-w-0 flex-1">
                                             <div class="flex items-center justify-between gap-3">
                                                 <x-input-label value="Scala dolore" />
                                                 <span class="rounded-full border border-line bg-mist px-3 py-1 text-xs font-black text-sage"><span data-pain-value>{{ $session->pain_level ?? 0 }}</span>/10</span>
@@ -683,7 +683,7 @@
                     .' | Inps: '.number_format($defaultSocialSecurity, 2, '.', '')
                     .' | Bollo: '.number_format($defaultStamp, 2, '.', '');
             @endphp
-            <section id="fatture" class="app-card p-6">
+            <section id="fatture" class="app-card p-4 sm:p-6">
                 <div class="flex flex-wrap items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
                         <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-teal-100 bg-teal-50 text-teal-600 shadow-card">
@@ -952,7 +952,7 @@
                 $signedAtValue = old('signed_at', $privacyConsent?->signed_at?->toDateString() ?? now()->toDateString());
                 $signatureValue = old('signature_data', $privacyConsent?->signature_data);
             @endphp
-            <section id="privacy" class="app-card p-6">
+            <section id="privacy" class="app-card p-4 sm:p-6">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h3 class="font-semibold text-gray-900">Privacy e consenso</h3>
