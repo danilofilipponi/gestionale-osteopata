@@ -18,7 +18,18 @@
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
             @endif
 
-            <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-5 md:gap-4 md:overflow-visible md:px-0 md:pb-0">
+            <div class="app-card p-4 md:hidden">
+                <label for="mobile_patient_section" class="text-xs font-bold uppercase text-muted">Sezione cartella paziente</label>
+                <select id="mobile_patient_section" class="app-field mt-2 block w-full font-bold" onchange="if (this.value) window.location.href = this.value">
+                    <option value="{{ route('patients.show', $patient) }}" @selected($section === 'anagrafica')>Anagrafica</option>
+                    <option value="{{ route('patients.anamnesis.index', $patient) }}" @selected($section === 'anamnesi')>Anamnesi</option>
+                    <option value="{{ route('patients.sessions.index', $patient) }}" @selected($section === 'sedute')>Storico sedute</option>
+                    <option value="{{ route('patients.invoices.index', $patient) }}" @selected($section === 'fatture')>Storico fatture</option>
+                    <option value="{{ route('patients.privacy.index', $patient) }}" @selected($section === 'privacy')>Privacy e consenso</option>
+                </select>
+            </div>
+
+            <div class="hidden gap-4 md:grid md:grid-cols-5">
                 <a href="{{ route('patients.show', $patient) }}" class="shrink-0 rounded-xl border px-4 py-3 text-sm font-bold shadow-card md:rounded-2xl md:p-4 {{ $section === 'anagrafica' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Anagrafica</a>
                 <a href="{{ route('patients.anamnesis.index', $patient) }}" class="shrink-0 rounded-xl border px-4 py-3 text-sm font-bold shadow-card md:rounded-2xl md:p-4 {{ $section === 'anamnesi' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Anamnesi</a>
                 <a href="{{ route('patients.sessions.index', $patient) }}" class="shrink-0 rounded-xl border px-4 py-3 text-sm font-bold shadow-card md:rounded-2xl md:p-4 {{ $section === 'sedute' ? 'border-sage bg-sage text-white' : 'border-line bg-white text-muted hover:bg-mist hover:text-ink' }}">Storico sedute</a>

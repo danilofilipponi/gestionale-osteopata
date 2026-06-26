@@ -30,6 +30,24 @@
                 padding: 12px;
             }
 
+            .settings-stack-table tbody {
+                counter-reset: settings-row;
+            }
+
+            .settings-stack-table tr::before {
+                color: #5f948a;
+                counter-increment: settings-row;
+                display: block;
+                font-size: 12px;
+                font-weight: 800;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+            }
+
+            .settings-services-table tr::before { content: "Servizio " counter(settings-row); }
+            .settings-agenda-table tr::before { content: "Categoria " counter(settings-row); }
+            .settings-rates-table tr::before { content: "Tariffa " counter(settings-row); }
+
             .settings-stack-table td {
                 display: block;
                 padding: 6px 0 !important;
@@ -49,6 +67,15 @@
             .settings-stack-table select {
                 min-width: 0 !important;
                 width: 100% !important;
+            }
+
+            .settings-page input[type="file"] {
+                max-width: 100%;
+            }
+
+            .settings-page .settings-section-header {
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
             }
 
             .settings-services-table td:nth-of-type(1)::before { content: "Servizio"; }
@@ -675,7 +702,7 @@
                                 <span class="rounded-full bg-mist px-3 py-1 text-xs font-bold uppercase text-sage">Calendario</span>
                             </div>
 
-                            <div class="mt-5 grid gap-4 md:grid-cols-4">
+                            <div class="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
                                 <div>
                                     <x-input-label for="agenda_start_time" value="Ora inizio giornata" />
                                     <x-text-input id="agenda_start_time" name="agenda_start_time" type="time" class="mt-1 block w-full" :value="old('agenda_start_time', $agendaSettings['agenda_start_time'])" required />
@@ -810,12 +837,12 @@
 
                             @if ($googleCalendarStatus['connected'])
                                 <div class="mt-5 rounded-2xl border border-line bg-white p-5">
-                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
                                             <h4 class="text-sm font-bold uppercase text-muted">Calendari da visualizzare</h4>
                                             <p class="mt-1 text-sm text-gray-500">Seleziona quali calendari Google importare e mostrare nell'agenda.</p>
                                         </div>
-                                        <button type="submit" form="google-calendar-refresh-form" class="rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink shadow-sm hover:bg-mist">
+                                        <button type="submit" form="google-calendar-refresh-form" class="w-full rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink shadow-sm hover:bg-mist sm:w-auto">
                                             Aggiorna lista calendari
                                         </button>
                                     </div>
@@ -845,21 +872,21 @@
                                 </div>
                             @endif
 
-                            <div class="mt-5 flex flex-wrap justify-end gap-3">
+                            <div class="mt-5 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:justify-end">
                                 @if ($googleCalendarStatus['configured'])
-                                    <a href="{{ route('google.calendar.connect') }}" class="inline-flex items-center rounded-xl border border-sage bg-white px-4 py-2.5 text-sm font-bold text-sage shadow-sm hover:bg-mist">
+                                    <a href="{{ route('google.calendar.connect') }}" class="col-span-2 inline-flex items-center justify-center rounded-xl border border-sage bg-white px-4 py-2.5 text-center text-sm font-bold text-sage shadow-sm hover:bg-mist sm:col-auto">
                                         Collega Google Calendar
                                     </a>
                                     @if ($googleCalendarStatus['connected'])
-                                        <select name="sync_year" form="google-calendar-sync-form" class="app-field min-w-28 py-2 pr-9">
+                                        <select name="sync_year" form="google-calendar-sync-form" class="app-field w-full py-2 pr-9 sm:w-auto sm:min-w-28">
                                             @for ($year = now()->year - 2; $year <= now()->year + 2; $year++)
                                                 <option value="{{ $year }}" @selected($year === now()->year)>{{ $year }}</option>
                                             @endfor
                                         </select>
-                                        <button type="submit" form="google-calendar-sync-form" class="inline-flex items-center rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">
+                                        <button type="submit" form="google-calendar-sync-form" class="inline-flex items-center justify-center rounded-xl border border-line bg-white px-4 py-2.5 text-center text-sm font-bold text-ink shadow-sm hover:bg-mist">
                                             Sincronizza anno
                                         </button>
-                                        <button type="submit" form="google-calendar-disconnect-form" class="inline-flex items-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-700 shadow-sm hover:bg-red-50">
+                                        <button type="submit" form="google-calendar-disconnect-form" class="col-span-2 inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2.5 text-center text-sm font-bold text-red-700 shadow-sm hover:bg-red-50 sm:col-auto">
                                             Scollega
                                         </button>
                                     @endif
@@ -869,8 +896,8 @@
                             </div>
                         </section>
 
-                        <div class="flex justify-end">
-                            <x-primary-button>Salva impostazioni agenda</x-primary-button>
+                        <div class="flex">
+                            <x-primary-button class="w-full justify-center sm:ml-auto sm:w-auto">Salva impostazioni agenda</x-primary-button>
                         </div>
                     </form>
                     <form id="google-calendar-sync-form" method="POST" action="{{ route('google.calendar.sync') }}" class="hidden">@csrf</form>
@@ -950,7 +977,7 @@
                         </section>
 
                         <section class="app-card overflow-hidden">
-                            <div class="border-b border-line px-6 py-4" style="background: #d4f0e1;">
+                            <div class="settings-section-header border-b border-line px-6 py-4" style="background: #d4f0e1;">
                                 <div class="flex items-center gap-3">
                                     <span class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-teal-100 bg-white text-sage">
                                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
@@ -964,7 +991,7 @@
                             <form method="POST" action="{{ route('settings.accounting.incomes.import') }}" enctype="multipart/form-data" class="space-y-4 p-6">
                                 @csrf
                                 <input id="accounting_income_year_value" type="hidden" name="year" value="{{ now()->year }}">
-                                <div class="gap-4" style="display: grid; grid-template-columns: 235px minmax(0, 1fr) 240px; align-items: end;">
+                                <div class="grid gap-4 md:grid-cols-[180px_minmax(0,1fr)_220px] md:items-end xl:grid-cols-[235px_minmax(0,1fr)_240px]">
                                     <div>
                                         <x-input-label for="accounting_annual_income_year" value="Anno contabile" />
                                         <select id="accounting_annual_income_year" class="app-field mt-1 block w-full">
@@ -980,7 +1007,7 @@
                                     <x-primary-button name="import_kind" value="annual" class="w-full justify-center" onclick="document.getElementById('accounting_income_year_value').value = document.getElementById('accounting_annual_income_year').value">Carica entrate annuali</x-primary-button>
                                 </div>
 
-                                <div class="gap-4" style="display: grid; grid-template-columns: 235px minmax(0, 1fr) 240px; align-items: end;">
+                                <div class="grid gap-4 border-t border-line pt-4 md:grid-cols-[180px_minmax(0,1fr)_220px] md:items-end xl:grid-cols-[235px_minmax(0,1fr)_240px]">
                                     <div>
                                         <x-input-label for="accounting_gross_income_year" value="Anno contabile" />
                                         <select id="accounting_gross_income_year" class="app-field mt-1 block w-full">
@@ -1005,7 +1032,7 @@
                         </section>
 
                         <section class="app-card overflow-hidden">
-                            <div class="border-b border-line px-6 py-4" style="background: #ffd7d7;">
+                            <div class="settings-section-header border-b border-line px-6 py-4" style="background: #ffd7d7;">
                                 <div class="flex items-center gap-3">
                                     <span class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-rose-100 bg-white text-rose-700">
                                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -1030,7 +1057,7 @@
                                     <x-input-label for="accounting_expense_file" value="File Excel spese" />
                                     <input id="accounting_expense_file" name="expenses_file" type="file" accept=".xlsx,.xls" class="app-field mt-1 block w-full" required>
                                 </div>
-                                <x-primary-button>Carica spese</x-primary-button>
+                                <x-primary-button class="w-full justify-center md:w-auto">Carica spese</x-primary-button>
                                 <input type="hidden" name="replace_existing" value="0">
                                 <label class="flex items-center gap-2 text-sm font-semibold text-muted md:col-span-3">
                                     <input type="checkbox" name="replace_existing" value="1" checked class="rounded border-line text-sage focus:ring-sage">
@@ -1040,7 +1067,7 @@
                         </section>
 
                         <section class="app-card overflow-hidden">
-                            <div class="border-b border-line px-6 py-4" style="background: #f5bf8e;">
+                            <div class="settings-section-header border-b border-line px-6 py-4" style="background: #f5bf8e;">
                                 <div class="flex items-center gap-3">
                                     <span class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-orange-100 bg-white text-orange-700">
                                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 18h6"/><path d="M9 12h2"/></svg>
@@ -1089,8 +1116,8 @@
                                     Questi valori alimentano il riepilogo imposte nella pagina Contabilita.
                                 </div>
 
-                                <div class="flex justify-end">
-                                    <x-primary-button>Salva impostazioni imposte</x-primary-button>
+                                <div class="flex">
+                                    <x-primary-button class="w-full justify-center sm:ml-auto sm:w-auto">Salva impostazioni imposte</x-primary-button>
                                 </div>
                             </form>
                         </section>
