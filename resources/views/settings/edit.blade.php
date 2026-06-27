@@ -48,6 +48,10 @@
             .settings-agenda-table tr::before { content: "Categoria " counter(settings-row); }
             .settings-rates-table tr::before { content: "Tariffa " counter(settings-row); }
 
+            .settings-stack-table tr.settings-mobile-hidden {
+                display: none;
+            }
+
             .settings-stack-table td {
                 display: block;
                 padding: 6px 0 !important;
@@ -98,6 +102,51 @@
             .settings-rates-table td:nth-of-type(2)::before { content: "Predefinita"; }
             .settings-rates-table td:nth-of-type(3)::before { content: "Prestazione"; }
             .settings-rates-table td:nth-of-type(4)::before { content: "Tariffa"; }
+
+            .settings-services-table tr {
+                display: grid;
+                gap: 8px 12px;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .settings-services-table tr::before,
+            .settings-services-table td:nth-of-type(1),
+            .settings-services-table td:nth-of-type(2),
+            .settings-services-table td:nth-of-type(9) {
+                grid-column: 1 / -1;
+            }
+
+            .settings-agenda-table tr {
+                display: grid;
+                gap: 8px 12px;
+                grid-template-columns: 76px 1fr 1fr;
+            }
+
+            .settings-agenda-table tr::before,
+            .settings-agenda-table td:nth-of-type(1),
+            .settings-agenda-table td:nth-of-type(3) {
+                grid-column: 1 / -1;
+            }
+
+            .settings-rates-table tr {
+                display: grid;
+                gap: 8px 12px;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .settings-rates-table tr::before,
+            .settings-rates-table td:nth-of-type(3),
+            .settings-rates-table td:nth-of-type(4) {
+                grid-column: 1 / -1;
+            }
+
+            .settings-mobile-two-columns {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .settings-mobile-wide {
+                grid-column: 1 / -1;
+            }
         }
     </style>
     <x-slot name="header">
@@ -374,7 +423,7 @@
                             <div class="mt-5 space-y-6">
                                 <div>
                                     <h4 class="text-sm font-bold uppercase text-muted">Tracciato e documento</h4>
-                                    <div class="mt-3 grid gap-4 md:grid-cols-4">
+                                    <div class="settings-mobile-two-columns mt-3 grid gap-3 md:grid-cols-4 md:gap-4">
                                         <div>
                                             <x-input-label for="invoice_transmission_format" value="Formato trasmissione" />
                                             <x-text-input id="invoice_transmission_format" name="invoice_transmission_format" class="mt-1 block w-full" :value="old('invoice_transmission_format', $invoiceSettings['invoice_transmission_format'])" />
@@ -404,8 +453,8 @@
 
                                 <div>
                                     <h4 class="text-sm font-bold uppercase text-muted">Cedente / prestatore</h4>
-                                    <div class="mt-3 grid gap-4 md:grid-cols-3">
-                                        <div>
+                                    <div class="settings-mobile-two-columns mt-3 grid gap-3 md:grid-cols-3 md:gap-4">
+                                        <div class="settings-mobile-wide md:col-auto">
                                             <x-input-label for="invoice_sender_name" value="Denominazione" />
                                             <x-text-input id="invoice_sender_name" name="invoice_sender_name" class="mt-1 block w-full" :value="old('invoice_sender_name', $invoiceSettings['invoice_sender_name'])" />
                                         </div>
@@ -425,11 +474,11 @@
                                             <x-input-label for="invoice_tax_regime" value="Regime fiscale" />
                                             <x-text-input id="invoice_tax_regime" name="invoice_tax_regime" class="mt-1 block w-full" :value="old('invoice_tax_regime', $invoiceSettings['invoice_tax_regime'])" />
                                         </div>
-                                        <div>
+                                        <div class="settings-mobile-wide md:col-auto">
                                             <x-input-label for="invoice_sender_email" value="Email" />
                                             <x-text-input id="invoice_sender_email" name="invoice_sender_email" type="email" class="mt-1 block w-full" :value="old('invoice_sender_email', $invoiceSettings['invoice_sender_email'])" />
                                         </div>
-                                        <div class="md:col-span-2">
+                                        <div class="settings-mobile-wide md:col-span-2">
                                             <x-input-label for="invoice_sender_address" value="Indirizzo" />
                                             <x-text-input id="invoice_sender_address" name="invoice_sender_address" class="mt-1 block w-full" :value="old('invoice_sender_address', $invoiceSettings['invoice_sender_address'])" />
                                         </div>
@@ -454,8 +503,8 @@
 
                                 <div>
                                     <h4 class="text-sm font-bold uppercase text-muted">IVA, cassa e pagamento</h4>
-                                    <div class="mt-3 grid gap-4 md:grid-cols-3">
-                                        <div>
+                                    <div class="settings-mobile-two-columns mt-3 grid gap-3 md:grid-cols-3 md:gap-4">
+                                        <div class="settings-mobile-wide md:col-auto">
                                             <x-input-label for="invoice_vat_nature" value="Natura IVA" />
                                             <x-text-input id="invoice_vat_nature" name="invoice_vat_nature" class="mt-1 block w-full" :value="old('invoice_vat_nature', $invoiceSettings['invoice_vat_nature'])" />
                                         </div>
@@ -487,7 +536,7 @@
                                             <x-input-label for="invoice_stamp_amount" value="Importo bollo" />
                                             <x-text-input id="invoice_stamp_amount" name="invoice_stamp_amount" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('invoice_stamp_amount', $invoiceSettings['invoice_stamp_amount'])" />
                                         </div>
-                                        <div class="md:col-span-3">
+                                        <div class="settings-mobile-wide md:col-span-3">
                                             <x-input-label for="invoice_default_causale" value="Causale default" />
                                             <textarea id="invoice_default_causale" name="invoice_default_causale" rows="3" class="app-field mt-1 block w-full">{{ old('invoice_default_causale', $invoiceSettings['invoice_default_causale']) }}</textarea>
                                         </div>
@@ -513,6 +562,7 @@
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-line">
+                                            @php $mobileEmptyInvoiceServiceShown = false; @endphp
                                             @for ($index = 0; $index < 5; $index++)
                                                 @php
                                                     $service = old("services.$index", $invoiceServices[$index] ?? []);
@@ -524,8 +574,13 @@
                                                     $taxable = $amount + $socialSecurityAmount;
                                                     $vat = $taxable * $vatRate / 100;
                                                     $stampAmount = $stampDuty && $taxable > (float) $invoiceSettings['invoice_stamp_threshold'] ? (float) $invoiceSettings['invoice_stamp_amount'] : 0;
+                                                    $emptyInvoiceService = blank($service['name'] ?? null) && blank($service['description'] ?? null) && $amount <= 0;
+                                                    $hideEmptyInvoiceServiceOnMobile = $emptyInvoiceService && $mobileEmptyInvoiceServiceShown;
+                                                    if ($emptyInvoiceService) {
+                                                        $mobileEmptyInvoiceServiceShown = true;
+                                                    }
                                                 @endphp
-                                                <tr>
+                                                <tr class="{{ $hideEmptyInvoiceServiceOnMobile ? 'settings-mobile-hidden' : '' }}">
                                                     <td class="py-3 pr-3"><input name="services[{{ $index }}][name]" class="app-field w-44" value="{{ $service['name'] ?? '' }}"></td>
                                                     <td class="py-3 pr-3"><input name="services[{{ $index }}][description]" class="app-field w-56" value="{{ $service['description'] ?? '' }}"></td>
                                                     <td class="py-3 pr-3"><input name="services[{{ $index }}][amount]" type="number" step="0.01" min="0" class="app-field w-28" value="{{ $service['amount'] ?? '' }}"></td>
@@ -548,8 +603,8 @@
                                 </div>
                             </div>
 
-                            <div class="mt-5 flex justify-end">
-                                <x-primary-button>Salva impostazioni fatture</x-primary-button>
+                            <div class="mt-5 flex">
+                                <x-primary-button class="w-full justify-center sm:ml-auto sm:w-auto">Salva impostazioni fatture</x-primary-button>
                             </div>
                         </section>
                     </form>
@@ -572,7 +627,7 @@
                                 <x-input-label for="invoice_export_to" value="Data fine" />
                                 <x-text-input id="invoice_export_to" name="invoice_export_to" type="date" class="mt-1 block w-full" :value="$invoiceExportTo" />
                             </div>
-                            <button class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Applica filtro</button>
+                            <button class="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist md:w-auto">Applica filtro</button>
                         </form>
 
                         <div class="mt-4 flex flex-wrap gap-3">
@@ -586,8 +641,8 @@
                             <p class="mt-1 text-3xl font-bold text-ink">{{ $invoiceExportCount }}</p>
                         </div>
 
-                        <div class="mt-5 flex justify-end">
-                            <a href="{{ route('settings.invoices.export-xml', ['from' => $invoiceExportFrom, 'to' => $invoiceExportTo]) }}" class="inline-flex items-center rounded-xl bg-sage px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75]">
+                        <div class="mt-5 flex">
+                            <a href="{{ route('settings.invoices.export-xml', ['from' => $invoiceExportFrom, 'to' => $invoiceExportTo]) }}" class="inline-flex w-full items-center justify-center rounded-xl bg-sage px-4 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75] sm:ml-auto sm:w-auto">
                                 Esporta fatture XML
                             </a>
                         </div>
@@ -605,7 +660,7 @@
                                 <x-input-error :messages="$errors->get('invoices_file')" class="mt-2" />
                                 <p class="mt-2 text-xs text-muted">Colonne lette: IDFattura, N Fattura, Data di emissione, Idpaziente, Descrizione, Importo, Inps, Bollo, Totale.</p>
                             </div>
-                            <x-primary-button>Importa Excel fatture</x-primary-button>
+                            <x-primary-button class="w-full justify-center md:w-auto">Importa Excel fatture</x-primary-button>
                         </form>
 
                         <div class="mt-5 rounded-2xl border border-line bg-mist p-5 text-sm text-muted">
@@ -748,14 +803,20 @@
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-line">
+                                        @php $mobileEmptyAgendaCategoryShown = false; @endphp
                                         @for ($index = 0; $index < 8; $index++)
                                             @php
                                                 $category = old("categories.$index", $agendaCategories[$index] ?? []);
                                                 $categoryGoogleCalendarId = $category['google_calendar_id'] ?? '';
                                                 $googleCalendarColor = collect($googleCalendars)->firstWhere('id', $categoryGoogleCalendarId)['backgroundColor'] ?? null;
                                                 $color = $googleCalendarColor ?? ($category['color'] ?? '#5f948a');
+                                                $emptyAgendaCategory = blank($category['label'] ?? null) && blank($category['key'] ?? null);
+                                                $hideEmptyAgendaCategoryOnMobile = $emptyAgendaCategory && $mobileEmptyAgendaCategoryShown;
+                                                if ($emptyAgendaCategory) {
+                                                    $mobileEmptyAgendaCategoryShown = true;
+                                                }
                                             @endphp
-                                            <tr>
+                                            <tr class="{{ $hideEmptyAgendaCategoryOnMobile ? 'settings-mobile-hidden' : '' }}">
                                                 <td class="py-3 pr-3">
                                                     <input type="hidden" name="categories[{{ $index }}][key]" value="{{ $category['key'] ?? '' }}">
                                                     <input name="categories[{{ $index }}][label]" class="app-field w-full min-w-80" value="{{ $category['label'] ?? '' }}" placeholder="Visita osteopatica">
@@ -805,12 +866,12 @@
                                 </div>
                             </div>
 
-                            <div class="mt-5 grid gap-4 md:grid-cols-2">
-                                <div>
+                            <div class="settings-mobile-two-columns mt-5 grid gap-3 md:grid-cols-2 md:gap-4">
+                                <div class="settings-mobile-wide">
                                     <x-input-label for="google_calendar_id" value="ID calendario Google" />
                                     <x-text-input id="google_calendar_id" name="google_calendar_id" class="mt-1 block w-full" :value="old('google_calendar_id', $agendaSettings['google_calendar_id'])" placeholder="nome@gmail.com oppure calendar-id" />
                                 </div>
-                                <div>
+                                <div class="settings-mobile-wide">
                                     <x-input-label for="google_calendar_sync_mode" value="Modalita collegamento" />
                                     <select id="google_calendar_sync_mode" name="google_calendar_sync_mode" class="app-field mt-1 block w-full">
                                         <option value="read" @selected(old('google_calendar_sync_mode', $agendaSettings['google_calendar_sync_mode']) === 'read')>Solo lettura</option>
@@ -818,17 +879,17 @@
                                         <option value="two_way" @selected(old('google_calendar_sync_mode', $agendaSettings['google_calendar_sync_mode']) === 'two_way')>Sincronizzazione completa</option>
                                     </select>
                                 </div>
-                                <div>
+                                <div class="settings-mobile-wide">
                                     <x-input-label for="google_calendar_client_id" value="Client ID Google" />
                                     <x-text-input id="google_calendar_client_id" name="google_calendar_client_id" class="mt-1 block w-full" :value="old('google_calendar_client_id', $agendaSettings['google_calendar_client_id'])" placeholder="Usato solo come promemoria: il valore reale e nel file .env" />
                                 </div>
-                                <div>
+                                <div class="settings-mobile-wide">
                                     <x-input-label for="google_calendar_api_key" value="API key Google" />
                                     <x-text-input id="google_calendar_api_key" name="google_calendar_api_key" class="mt-1 block w-full" :value="old('google_calendar_api_key', $agendaSettings['google_calendar_api_key'])" />
                                 </div>
                             </div>
 
-                            <div class="mt-5 rounded-2xl border border-line bg-mist p-5 text-sm text-muted">
+                            <div class="mt-5 rounded-xl border border-line bg-mist p-4 text-sm text-muted sm:rounded-2xl sm:p-5">
                                 Per il calendario principale usa <strong>primary</strong> come ID calendario. Il Client Secret resta nel file locale .env e non viene pubblicato su GitHub.
                                 @if ($googleCalendarStatus['connected_at'])
                                     <span class="mt-1 block">Ultimo collegamento: {{ $googleCalendarStatus['connected_at'] }}</span>
