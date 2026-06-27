@@ -1,6 +1,34 @@
 <x-app-layout>
     <style>
         @media (max-width: 767px) {
+            .settings-page {
+                max-width: 100vw;
+                overflow-x: clip;
+            }
+
+            .settings-page .settings-content-grid,
+            .settings-page .settings-primary-column,
+            .settings-page .settings-agenda-form,
+            .settings-page .settings-agenda-form > .app-card {
+                box-sizing: border-box;
+                min-width: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .settings-page .settings-agenda-form > .app-card {
+                overflow: hidden;
+            }
+
+            .settings-page .settings-agenda-form input,
+            .settings-page .settings-agenda-form select,
+            .settings-page .settings-agenda-form textarea,
+            .settings-page .settings-agenda-form label,
+            .settings-page .settings-agenda-form div {
+                min-width: 0;
+                max-width: 100%;
+            }
+
             .settings-page .app-card.p-6,
             .settings-page form.p-6 {
                 padding: 1rem;
@@ -119,7 +147,9 @@
             .settings-agenda-table tr {
                 display: grid;
                 gap: 8px 12px;
-                grid-template-columns: 76px 1fr 1fr;
+                grid-template-columns: 68px minmax(0, 1fr) minmax(0, 1fr);
+                min-width: 0;
+                width: 100%;
             }
 
             .settings-agenda-table tr::before,
@@ -185,8 +215,8 @@
                 </select>
             </div>
 
-            <div class="grid gap-6 lg:grid-cols-[1fr_340px]">
-                <div class="space-y-6">
+            <div class="settings-content-grid grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div class="settings-primary-column min-w-0 space-y-6">
                     @if ($section === 'patients')
                     <section class="app-card p-6">
                         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -749,7 +779,7 @@
                     @endif
 
                     @if ($section === 'agenda')
-                    <form method="POST" action="{{ route('settings.agenda.update') }}" class="space-y-6">
+                    <form method="POST" action="{{ route('settings.agenda.update') }}" class="settings-agenda-form min-w-0 space-y-6">
                         @csrf
                         @method('PATCH')
 
