@@ -205,7 +205,8 @@ class GoogleCalendarController extends Controller
         }
 
         $category = $this->categoryForCalendar($calendarId);
-        $patientMatch = ($category['sync_patients'] ?? false) && $this->shouldCheckPatientMatch($startsAt)
+        $shouldSyncPatient = $this->calendarSynchronizesPatients($calendarId);
+        $patientMatch = $shouldSyncPatient && $this->shouldCheckPatientMatch($startsAt)
             ? $this->matchPatient((string) ($event['summary'] ?? ''))
             : ['patient' => null, 'status' => null];
 
@@ -355,15 +356,24 @@ class GoogleCalendarController extends Controller
             return [
                 'key' => $category['key'] ?? 'other',
                 'color' => $calendarColor ?? ($category['color'] ?? '#64748b'),
-                'sync_patients' => (bool) ($category['sync_patients'] ?? false),
             ];
         }
 
         return [
             'key' => 'other',
             'color' => $calendarColor ?? '#64748b',
-            'sync_patients' => false,
         ];
+    }
+
+    private function calendarSynchronizesPatients(string $calendarId): bool
+    {
+        $normalizedCalendarId = trim($calendarId);
+        $categories = json_decode(Setting::getValue('agenda_categories', '[]'), true) ?: [];
+        $category = collect($categories)->first(function (array $candidate) use ($normalizedCalendarId) {
+            return trim((string) ($candidate['google_calendar_id'] ?? '')) === $normalizedCalendarId;
+        });
+
+        return (bool) ($category['sync_patients'] ?? false);
     }
 
     private function matchPatient(string $title): array

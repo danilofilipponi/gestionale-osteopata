@@ -256,7 +256,6 @@ class AppointmentTest extends TestCase
         $category = $this->callGoogleCategoryForCalendar('calendar-work');
 
         $this->assertSame('work', $category['key']);
-        $this->assertFalse($category['sync_patients']);
     }
 
     public function test_google_calendar_without_category_uses_other(): void
@@ -274,7 +273,73 @@ class AppointmentTest extends TestCase
         $category = $this->callGoogleCategoryForCalendar('calendar-without-category');
 
         $this->assertSame('other', $category['key']);
-        $this->assertFalse($category['sync_patients']);
+    }
+
+    public function test_google_event_import_keeps_category_when_patient_sync_is_disabled(): void
+    {
+        Setting::setValue('agenda_categories', json_encode([
+            [
+                'key' => 'work',
+                'label' => 'Memo lavoro',
+                'color' => '#ffcc00',
+                'google_calendar_id' => 'calendar-work',
+                'sync_patients' => false,
+            ],
+        ]), 'agenda');
+
+        $result = $this->callGoogleEventImporter([
+            'id' => 'google-work-event',
+            'summary' => 'Riunione di lavoro',
+            'start' => ['dateTime' => '2026-07-01T09:00:00+02:00'],
+            'end' => ['dateTime' => '2026-07-01T10:00:00+02:00'],
+            'status' => 'confirmed',
+        ], 'calendar-work');
+
+        $this->assertSame('created', $result);
+        $this->assertDatabaseHas('appointments', [
+            'google_event_id' => 'google-work-event',
+            'google_calendar_id' => 'calendar-work',
+            'type' => 'work',
+            'patient_id' => null,
+            'patient_match_status' => null,
+        ]);
+    }
+
+    public function test_google_event_sync_corrects_an_existing_wrong_category(): void
+    {
+        Setting::setValue('agenda_categories', json_encode([
+            [
+                'key' => 'work',
+                'label' => 'Memo lavoro',
+                'color' => '#ffcc00',
+                'google_calendar_id' => 'calendar-work',
+                'sync_patients' => false,
+            ],
+        ]), 'agenda');
+        Appointment::create([
+            'title' => 'Riunione di lavoro',
+            'starts_at' => '2026-07-01 09:00:00',
+            'ends_at' => '2026-07-01 10:00:00',
+            'type' => 'Cagli',
+            'status' => 'scheduled',
+            'google_event_id' => 'google-work-event',
+            'google_calendar_id' => 'calendar-work',
+        ]);
+
+        $result = $this->callGoogleEventImporter([
+            'id' => 'google-work-event',
+            'summary' => 'Riunione di lavoro',
+            'start' => ['dateTime' => '2026-07-01T09:00:00+02:00'],
+            'end' => ['dateTime' => '2026-07-01T10:00:00+02:00'],
+            'status' => 'confirmed',
+        ], 'calendar-work');
+
+        $this->assertSame('updated', $result);
+        $this->assertDatabaseHas('appointments', [
+            'google_event_id' => 'google-work-event',
+            'google_calendar_id' => 'calendar-work',
+            'type' => 'work',
+        ]);
     }
 
     public function test_google_patient_matching_only_auto_matches_unique_perfect_match(): void
@@ -350,6 +415,15 @@ class AppointmentTest extends TestCase
         $method->setAccessible(true);
 
         return $method->invoke($controller, $calendarId);
+    }
+
+    private function callGoogleEventImporter(array $event, string $calendarId): ?string
+    {
+        $controller = app(\App\Http\Controllers\GoogleCalendarController::class);
+        $method = (new ReflectionClass($controller))->getMethod('importEvent');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller, $event, $calendarId);
     }
 
 }
