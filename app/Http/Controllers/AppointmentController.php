@@ -31,9 +31,36 @@ class AppointmentController extends Controller
         $calendarStart = $view === 'month' ? $start->copy()->startOfWeek() : $start->copy();
         $calendarEnd = $view === 'month' ? $end->copy()->endOfWeek() : $end->copy();
         $appointments = Appointment::with('patient')
-            ->whereBetween('starts_at', [$calendarStart, $calendarEnd])
+            ->where('starts_at', '<=', $calendarEnd)
+            ->where('ends_at', '>=', $calendarStart)
             ->oldest('starts_at')
             ->get();
+        $appointmentsByDate = collect();
+
+        foreach ($appointments as $appointment) {
+            $firstDay = $appointment->starts_at->copy()->startOfDay();
+            if ($firstDay->lt($calendarStart->copy()->startOfDay())) {
+                $firstDay = $calendarStart->copy()->startOfDay();
+            }
+
+            $lastMoment = $appointment->ends_at->copy();
+            if ($lastMoment->isStartOfDay() && $lastMoment->gt($appointment->starts_at)) {
+                $lastMoment->subSecond();
+            }
+
+            $lastDay = $lastMoment->startOfDay();
+            if ($lastDay->gt($calendarEnd->copy()->startOfDay())) {
+                $lastDay = $calendarEnd->copy()->startOfDay();
+            }
+
+            foreach (CarbonPeriod::create($firstDay, $lastDay) as $appointmentDay) {
+                $dayKey = $appointmentDay->toDateString();
+                $appointmentsByDate->put(
+                    $dayKey,
+                    $appointmentsByDate->get($dayKey, collect())->push($appointment),
+                );
+            }
+        }
         $patientMatchStart = now()->subDays(7)->startOfDay();
         $patientMatchEnd = now()->addDays(7)->endOfDay();
         $pendingPatientMatches = Appointment::whereNull('patient_id')
@@ -61,7 +88,7 @@ class AppointmentController extends Controller
             'timeSlots' => $this->timeSlots($settings['agenda_start_time'], $settings['agenda_end_time'], 15),
             'settings' => $settings,
             'categories' => $categories,
-            'appointmentsByDate' => $appointments->groupBy(fn (Appointment $appointment) => $appointment->starts_at->toDateString()),
+            'appointmentsByDate' => $appointmentsByDate,
             'statusLabels' => $this->statusLabels(),
             'pendingPatientMatches' => $pendingPatientMatches,
             'showPatientMatchModal' => (bool) (

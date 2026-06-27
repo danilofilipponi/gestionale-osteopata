@@ -46,6 +46,8 @@
             ->values();
         $mobileDate = $date->copy();
         $mobileDayEvents = $appointmentsByDate->get($mobileDate->toDateString(), collect());
+        $mobileDayStart = $mobileDate->copy()->setTimeFromTimeString($settings['agenda_start_time']);
+        $mobileDayEnd = $mobileDate->copy()->setTimeFromTimeString($settings['agenda_end_time']);
         $mobilePrevDate = $mobileDate->copy()->subDay();
         $mobileNextDate = $mobileDate->copy()->addDay();
     @endphp
@@ -115,6 +117,8 @@
                     @forelse ($mobileDayEvents as $appointment)
                         @php
                             $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                            $mobileVisibleStart = $appointment->starts_at->copy()->lessThan($mobileDayStart) ? $mobileDayStart->copy() : $appointment->starts_at->copy();
+                            $mobileVisibleEnd = $appointment->ends_at->copy()->greaterThan($mobileDayEnd) ? $mobileDayEnd->copy() : $appointment->ends_at->copy();
                             $unmatchedPatient = blank($appointment->patient_id)
                                 && filled($appointment->google_event_id)
                                 && filled($appointment->google_calendar_id)
@@ -131,8 +135,8 @@
                             @endif
                             <div class="grid grid-cols-[86px_1fr] gap-3">
                                 <div class="border-r border-line pr-3">
-                                    <p class="text-sm font-black text-ink">{{ $appointment->starts_at->format('H:i') }}</p>
-                                    <p class="mt-1 text-xs font-bold text-muted">{{ $appointment->ends_at->format('H:i') }}</p>
+                                    <p class="text-sm font-black text-ink">{{ $mobileVisibleStart->format('H:i') }}</p>
+                                    <p class="mt-1 text-xs font-bold text-muted">{{ $mobileVisibleEnd->format('H:i') }}</p>
                                 </div>
                                 <div class="min-w-0">
                                     <p class="truncate text-base font-black text-ink">{{ $appointment->title }}</p>
@@ -201,6 +205,8 @@
                                     @foreach ($dayEvents->take(4) as $appointment)
                                         @php
                                             $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                                            $monthDayStart = $day->copy()->setTimeFromTimeString($settings['agenda_start_time']);
+                                            $monthVisibleStart = $appointment->starts_at->copy()->lessThan($monthDayStart) ? $monthDayStart : $appointment->starts_at;
                                             $unmatchedPatient = blank($appointment->patient_id)
                                                 && filled($appointment->google_event_id)
                                                 && filled($appointment->google_calendar_id)
@@ -212,7 +218,7 @@
                                             @endif
                                             <span class="block truncate font-bold text-ink">
                                                 <span class="mr-1 inline-block h-2 w-2 rounded-full" style="background-color: {{ $appointmentColor }}"></span>
-                                                {{ $appointment->starts_at->format('H:i') }} {{ $appointment->title }}
+                                                {{ $monthVisibleStart->format('H:i') }} {{ $appointment->title }}
                                             </span>
                                         </button>
                                     @endforeach
@@ -266,6 +272,9 @@
                                             @php
                                                 $visibleStart = $appointment->starts_at->copy()->lessThan($dayStart) ? $dayStart->copy() : $appointment->starts_at->copy();
                                                 $visibleEnd = $appointment->ends_at->copy()->greaterThan($dayEnd) ? $dayEnd->copy() : $appointment->ends_at->copy();
+                                                if ($visibleEnd->lte($dayStart) || $visibleStart->gte($dayEnd) || $visibleEnd->lte($visibleStart)) {
+                                                    continue;
+                                                }
                                                 $minutesFromStart = max(0, $dayStart->diffInMinutes($visibleStart, false));
                                                 $durationMinutes = max(15, $visibleStart->diffInMinutes($visibleEnd, false));
                                                 $eventTop = ($minutesFromStart / $slotMinutes) * $slotHeight;
@@ -296,7 +305,7 @@
                                                     <span class="mt-1 h-3 w-3 shrink-0 rounded-full" style="background-color: {{ $appointmentColor }}"></span>
                                                     <div class="min-w-0">
                                                         <p class="truncate text-sm font-bold text-ink">{{ $appointment->title }}</p>
-                                                        <p class="mt-0.5 text-xs text-muted">{{ $appointment->starts_at->format('H:i') }} - {{ $appointment->ends_at->format('H:i') }}</p>
+                                                        <p class="mt-0.5 text-xs text-muted">{{ $visibleStart->format('H:i') }} - {{ $visibleEnd->format('H:i') }}</p>
                                                         <p class="truncate text-xs text-muted">{{ $appointment->patient?->list_name ?: ($categoryMap->get($appointment->type)['label'] ?? 'Impegno personale') }}</p>
                                                     </div>
                                                 </div>

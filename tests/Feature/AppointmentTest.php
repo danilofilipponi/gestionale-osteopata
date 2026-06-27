@@ -79,6 +79,34 @@ class AppointmentTest extends TestCase
         ]);
     }
 
+    public function test_multi_day_appointment_is_available_on_every_calendar_day(): void
+    {
+        $user = User::factory()->create();
+        $appointment = Appointment::create([
+            'title' => 'Evento di più giorni',
+            'starts_at' => '2026-06-12 15:00:00',
+            'ends_at' => '2026-06-14 15:00:00',
+            'type' => 'personal',
+            'status' => 'scheduled',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('appointments.index', [
+            'view' => 'week',
+            'date' => '2026-06-12',
+        ]));
+
+        $response->assertOk();
+        $appointmentsByDate = $response->viewData('appointmentsByDate');
+
+        $containsAppointment = fn ($appointments) => $appointments->contains(
+            fn (Appointment $candidate) => $candidate->id === $appointment->id,
+        );
+
+        $this->assertTrue($containsAppointment($appointmentsByDate->get('2026-06-12')));
+        $this->assertTrue($containsAppointment($appointmentsByDate->get('2026-06-13')));
+        $this->assertTrue($containsAppointment($appointmentsByDate->get('2026-06-14')));
+    }
+
     public function test_personal_category_is_available_when_saved_categories_do_not_include_it(): void
     {
         $user = User::factory()->create();

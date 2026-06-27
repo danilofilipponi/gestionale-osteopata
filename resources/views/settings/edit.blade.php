@@ -748,6 +748,10 @@
                         @csrf
                         @method('PATCH')
 
+                        <div class="sticky bottom-3 z-40 flex rounded-2xl border border-line bg-white/95 p-2 shadow-xl backdrop-blur md:hidden">
+                            <x-primary-button class="w-full justify-center">Salva impostazioni agenda</x-primary-button>
+                        </div>
+
                         <section class="app-card p-6">
                             <div class="flex flex-wrap items-start justify-between gap-4">
                                 <div>
@@ -866,7 +870,19 @@
                                 </div>
                             </div>
 
-                            <div class="settings-mobile-two-columns mt-5 grid gap-3 md:grid-cols-2 md:gap-4">
+                            <div x-data="{ openGoogleAdvanced: false }" class="mt-5">
+                                <button
+                                    type="button"
+                                    class="flex w-full items-center justify-between rounded-xl border border-line bg-mist px-4 py-3 text-left text-sm font-bold text-ink md:hidden"
+                                    @click="openGoogleAdvanced = ! openGoogleAdvanced"
+                                >
+                                    <span>Configurazione avanzata Google</span>
+                                    <span class="text-xl text-sage" x-text="openGoogleAdvanced ? '−' : '+'"></span>
+                                </button>
+                            <div
+                                class="settings-mobile-two-columns mt-3 gap-3 md:mt-0 md:grid md:grid-cols-2 md:gap-4"
+                                :class="openGoogleAdvanced ? 'grid' : 'hidden md:grid'"
+                            >
                                 <div class="settings-mobile-wide">
                                     <x-input-label for="google_calendar_id" value="ID calendario Google" />
                                     <x-text-input id="google_calendar_id" name="google_calendar_id" class="mt-1 block w-full" :value="old('google_calendar_id', $agendaSettings['google_calendar_id'])" placeholder="nome@gmail.com oppure calendar-id" />
@@ -887,6 +903,7 @@
                                     <x-input-label for="google_calendar_api_key" value="API key Google" />
                                     <x-text-input id="google_calendar_api_key" name="google_calendar_api_key" class="mt-1 block w-full" :value="old('google_calendar_api_key', $agendaSettings['google_calendar_api_key'])" />
                                 </div>
+                            </div>
                             </div>
 
                             <div class="mt-5 rounded-xl border border-line bg-mist p-4 text-sm text-muted sm:rounded-2xl sm:p-5">
