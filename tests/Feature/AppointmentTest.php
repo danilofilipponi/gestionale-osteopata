@@ -241,6 +241,42 @@ class AppointmentTest extends TestCase
         $this->assertNull(Setting::getValue('google_calendar_refresh_token'));
     }
 
+    public function test_google_calendar_category_is_kept_even_without_patient_sync(): void
+    {
+        Setting::setValue('agenda_categories', json_encode([
+            [
+                'key' => 'work',
+                'label' => 'Memo lavoro',
+                'color' => '#ffcc00',
+                'google_calendar_id' => 'calendar-work',
+                'sync_patients' => false,
+            ],
+        ]), 'agenda');
+
+        $category = $this->callGoogleCategoryForCalendar('calendar-work');
+
+        $this->assertSame('work', $category['key']);
+        $this->assertFalse($category['sync_patients']);
+    }
+
+    public function test_google_calendar_without_category_uses_other(): void
+    {
+        Setting::setValue('agenda_categories', json_encode([
+            [
+                'key' => 'visit',
+                'label' => 'Visita osteopatica',
+                'color' => '#8bd9e8',
+                'google_calendar_id' => 'primary-calendar',
+                'sync_patients' => true,
+            ],
+        ]), 'agenda');
+
+        $category = $this->callGoogleCategoryForCalendar('calendar-without-category');
+
+        $this->assertSame('other', $category['key']);
+        $this->assertFalse($category['sync_patients']);
+    }
+
     public function test_google_patient_matching_only_auto_matches_unique_perfect_match(): void
     {
         $user = User::factory()->create();
@@ -305,6 +341,15 @@ class AppointmentTest extends TestCase
         $method->setAccessible(true);
 
         return $method->invoke($controller, $title);
+    }
+
+    private function callGoogleCategoryForCalendar(string $calendarId): array
+    {
+        $controller = app(\App\Http\Controllers\GoogleCalendarController::class);
+        $method = (new ReflectionClass($controller))->getMethod('categoryForCalendar');
+        $method->setAccessible(true);
+
+        return $method->invoke($controller, $calendarId);
     }
 
 }

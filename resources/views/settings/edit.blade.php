@@ -164,6 +164,11 @@
             @if (session('status'))
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
             @endif
+            @if ($errors->any())
+                <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+                    {{ $errors->first() }}
+                </div>
+            @endif
 
             <div class="app-card p-4 lg:hidden">
                 <label for="mobile_settings_section" class="text-xs font-bold uppercase text-muted">Sezione impostazioni</label>
@@ -808,7 +813,7 @@
                                     </thead>
                                     <tbody class="divide-y divide-line">
                                         @php $mobileEmptyAgendaCategoryShown = false; @endphp
-                                        @for ($index = 0; $index < 8; $index++)
+                                        @for ($index = 0; $index < 12; $index++)
                                             @php
                                                 $category = old("categories.$index", $agendaCategories[$index] ?? []);
                                                 $categoryGoogleCalendarId = $category['google_calendar_id'] ?? '';

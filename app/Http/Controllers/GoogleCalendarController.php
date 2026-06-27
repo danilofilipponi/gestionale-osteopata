@@ -344,28 +344,23 @@ class GoogleCalendarController extends Controller
     private function categoryForCalendar(string $calendarId): array
     {
         $categories = json_decode(Setting::getValue('agenda_categories', '[]'), true) ?: [];
-        $category = collect($categories)->firstWhere('google_calendar_id', $calendarId);
+        $normalizedCalendarId = trim($calendarId);
+        $category = collect($categories)->first(function (array $candidate) use ($normalizedCalendarId) {
+            return trim((string) ($candidate['google_calendar_id'] ?? '')) === $normalizedCalendarId;
+        });
         $calendars = collect(GoogleCalendarClient::storedCalendarList())->keyBy('id');
         $calendarColor = $calendars->get($calendarId)['backgroundColor'] ?? null;
 
         if ($category) {
-            if (! (bool) ($category['sync_patients'] ?? false)) {
-                return [
-                    'key' => 'personal',
-                    'color' => $calendarColor ?? '#64748b',
-                    'sync_patients' => false,
-                ];
-            }
-
             return [
-                'key' => $category['key'] ?? 'personal',
+                'key' => $category['key'] ?? 'other',
                 'color' => $calendarColor ?? ($category['color'] ?? '#64748b'),
                 'sync_patients' => (bool) ($category['sync_patients'] ?? false),
             ];
         }
 
         return [
-            'key' => 'personal',
+            'key' => 'other',
             'color' => $calendarColor ?? '#64748b',
             'sync_patients' => false,
         ];

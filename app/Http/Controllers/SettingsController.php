@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
 {
@@ -90,6 +91,17 @@ class SettingsController extends Controller
             'categories.*.google_calendar_id' => ['nullable', 'string', 'max:255'],
             'categories.*.sync_patients' => ['nullable', 'boolean'],
         ]);
+
+        $assignedCalendarIds = collect($validated['categories'] ?? [])
+            ->pluck('google_calendar_id')
+            ->map(fn ($calendarId) => trim((string) $calendarId))
+            ->filter();
+
+        if ($assignedCalendarIds->count() !== $assignedCalendarIds->unique()->count()) {
+            throw ValidationException::withMessages([
+                'categories' => 'Ogni calendario Google può essere collegato a una sola categoria.',
+            ]);
+        }
 
         foreach ($this->agendaSettingDefinitions() as $key => $definition) {
             $value = $key === 'google_calendar_enabled'
@@ -854,25 +866,37 @@ class SettingsController extends Controller
         $categories = json_decode(Setting::getValue('agenda_categories', '[]'), true) ?: [];
 
         if ($categories !== []) {
-            return $this->ensurePersonalAgendaCategory($categories);
+            return $this->ensureFallbackAgendaCategories($categories);
         }
 
         return [
             ['key' => 'visit', 'label' => 'Visita osteopatica', 'color' => '#5f948a', 'google_calendar_id' => '', 'sync_patients' => true],
             ['key' => 'personal', 'label' => 'Impegno personale', 'color' => '#64748b', 'google_calendar_id' => '', 'sync_patients' => false],
+            ['key' => 'other', 'label' => 'Altro', 'color' => '#64748b', 'google_calendar_id' => '', 'sync_patients' => false],
             ['key' => 'holiday', 'label' => 'Ferie', 'color' => '#d97706', 'google_calendar_id' => '', 'sync_patients' => false],
             ['key' => 'absence', 'label' => 'Assenza', 'color' => '#dc2626', 'google_calendar_id' => '', 'sync_patients' => false],
         ];
     }
 
-    private function ensurePersonalAgendaCategory(array $categories): array
+    private function ensureFallbackAgendaCategories(array $categories): array
     {
         $hasPersonal = collect($categories)->contains(fn (array $category) => ($category['key'] ?? null) === 'personal');
+        $hasOther = collect($categories)->contains(fn (array $category) => ($category['key'] ?? null) === 'other');
 
         if (! $hasPersonal) {
             $categories[] = [
                 'key' => 'personal',
                 'label' => 'Personale',
+                'color' => '#64748b',
+                'google_calendar_id' => '',
+                'sync_patients' => false,
+            ];
+        }
+
+        if (! $hasOther) {
+            $categories[] = [
+                'key' => 'other',
+                'label' => 'Altro',
                 'color' => '#64748b',
                 'google_calendar_id' => '',
                 'sync_patients' => false,
