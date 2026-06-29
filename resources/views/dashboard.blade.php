@@ -47,24 +47,24 @@
 
                 <section class="app-card p-5">
                     <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-semibold text-gray-500">Appuntamenti settimanali</p>
+                        <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-mist text-sage">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>
+                        </span>
+                    </div>
+                    <p class="mt-3 text-3xl font-semibold text-gray-900">{{ $weeklyPatientSyncAppointmentsCount }}</p>
+                    <p class="mt-1 text-xs font-semibold text-muted">{{ $weeklyPatientSyncAppointmentsRange }} - solo calendari pazienti</p>
+                </section>
+
+                <section class="app-card p-5">
+                    <div class="flex items-center justify-between gap-3">
                         <p class="text-sm font-semibold text-gray-500">Incasso previsto giornata</p>
                         <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-mist text-sage">
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg>
                         </span>
                     </div>
-                    <p class="mt-3 text-3xl font-semibold text-gray-900">EUR {{ number_format($expectedDailyIncome, 2, ',', '.') }}</p>
+                    <p class="mt-3 text-3xl font-semibold text-gray-900">€ {{ number_format($expectedDailyIncome, 2, ',', '.') }}</p>
                     <p class="mt-1 text-xs font-semibold text-muted">Da appuntamenti fatturabili di oggi</p>
-                </section>
-
-                <section class="app-card p-5">
-                    <div class="flex items-center justify-between gap-3">
-                        <p class="text-sm font-semibold text-gray-500">Fatturato mensile</p>
-                        <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-mist text-sage">
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-                        </span>
-                    </div>
-                    <p class="mt-3 text-3xl font-semibold text-gray-900">EUR {{ number_format($monthlyRevenue, 2, ',', '.') }}</p>
-                    <p class="mt-1 text-xs font-semibold text-muted">Emesso nel mese corrente</p>
                 </section>
             </div>
 

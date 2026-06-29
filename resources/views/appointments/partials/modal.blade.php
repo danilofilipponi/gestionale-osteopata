@@ -14,18 +14,10 @@
         </div>
 
         <div class="overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
-            <div class="mb-4 grid gap-3 text-sm md:grid-cols-2">
+            <div class="mb-4 grid gap-3 text-sm">
                 <div class="rounded-xl border border-line bg-white p-3 md:col-span-2">
                     <p class="text-xs font-bold uppercase text-muted">Paziente / origine</p>
                     <p class="mt-1 font-bold text-ink">{{ $appointment->patient?->list_name ?: 'Impegno personale / evento Google' }}</p>
-                </div>
-                <div class="rounded-xl border border-line bg-white p-3">
-                    <p class="text-xs font-bold uppercase text-muted">Categoria</p>
-                    <p class="mt-1 font-bold text-ink">{{ $appointment->type }}</p>
-                </div>
-                <div class="rounded-xl border border-line bg-white p-3">
-                    <p class="text-xs font-bold uppercase text-muted">Stato</p>
-                    <p class="mt-1 font-bold text-ink">{{ $statusLabels[$appointment->status] ?? $appointment->status }}</p>
                 </div>
             </div>
 

@@ -17,11 +17,10 @@ class DashboardController extends Controller
         $userId = Auth::id();
         $monthStart = now()->copy()->startOfMonth();
         $monthEnd = now()->copy()->endOfMonth();
+        $weekStart = now()->copy()->startOfWeek();
+        $weekEnd = now()->copy()->startOfWeek()->addDays(5)->endOfDay();
         $yearStart = now()->copy()->startOfYear();
         $yearEnd = now()->copy()->endOfYear();
-        $monthlyRevenue = Invoice::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
-            ->whereBetween('issued_at', [$monthStart, $monthEnd])
-            ->sum('amount');
         $paidInvoicesThisMonth = Invoice::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
             ->where('status', 'paid')
             ->whereBetween('issued_at', [$monthStart, $monthEnd])
@@ -67,11 +66,31 @@ class DashboardController extends Controller
                 return blank($categoryCalendarId);
             }));
         $expectedDailyAppointments = $patientSyncAppointments->count();
+        $weeklyAppointments = Appointment::query()
+            ->whereBetween('starts_at', [$weekStart, $weekEnd])
+            ->oldest('starts_at')
+            ->get()
+            ->filter(fn (Appointment $appointment) => ! in_array($appointment->status, ['cancelled', 'no_show'], true))
+            ->filter(fn (Appointment $appointment) => $patientSyncCategories->contains(function (array $category) use ($appointment) {
+                $categoryCalendarId = $category['google_calendar_id'] ?? null;
+
+                if (($category['key'] ?? null) !== $appointment->type) {
+                    return false;
+                }
+
+                if (filled($categoryCalendarId) && filled($appointment->google_calendar_id)) {
+                    return $categoryCalendarId === $appointment->google_calendar_id;
+                }
+
+                return blank($categoryCalendarId);
+            }));
 
         return view('dashboard', [
             'patientsCount' => Patient::where('user_id', $userId)->count(),
             'todayAppointments' => $todayAppointments,
             'patientSyncAppointmentsCount' => $patientSyncAppointments->count(),
+            'weeklyPatientSyncAppointmentsCount' => $weeklyAppointments->count(),
+            'weeklyPatientSyncAppointmentsRange' => $weekStart->translatedFormat('d M').' - '.$weekEnd->translatedFormat('d M'),
             'expectedDailyIncome' => $expectedDailyAppointments * (float) ($defaultSessionRate['amount'] ?? 0),
             'sessionsThisMonth' => TreatmentSession::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
                 ->whereBetween('session_date', [$monthStart, $monthEnd])
@@ -79,7 +98,6 @@ class DashboardController extends Controller
             'newPatientsThisMonth' => Patient::where('user_id', $userId)
                 ->whereBetween('created_at', [$monthStart, $monthEnd])
                 ->count(),
-            'monthlyRevenue' => $monthlyRevenue,
             'paidInvoicesThisMonth' => $paidInvoicesThisMonth,
             'openInvoicesTotal' => Invoice::whereHas('patient', fn ($query) => $query->where('user_id', $userId))
                 ->whereIn('status', ['draft', 'sent'])

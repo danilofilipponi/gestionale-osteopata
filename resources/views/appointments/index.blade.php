@@ -1,4 +1,35 @@
 <x-app-layout>
+    <style>
+        @media (min-width: 1100px) {
+            .agenda-header-line {
+                display: grid;
+                grid-template-columns: minmax(220px, 260px) minmax(360px, 1fr) auto;
+                align-items: start;
+                gap: 24px;
+            }
+
+            .agenda-period-nav {
+                justify-self: center;
+                padding-top: 2px;
+            }
+
+            .agenda-view-actions {
+                justify-self: end;
+                align-self: start;
+                flex-wrap: nowrap;
+                white-space: nowrap;
+            }
+        }
+
+        @media (max-width: 1099px) {
+            .agenda-header-line {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+    </style>
+
     @php
         $today = now();
         $viewLabels = ['day' => 'Giorno', 'week' => 'Settimana', 'month' => 'Mese'];
@@ -22,7 +53,7 @@
         $categoryMap = collect($categories)->keyBy('key');
         $calendarDayChunks = $calendarDays->chunk(7);
         $slotMinutes = 15;
-        $slotHeight = 26;
+        $slotHeight = 22;
         $agendaStartMinutes = (int) now()->setTimeFromTimeString($settings['agenda_start_time'])->diffInMinutes(now()->setTimeFromTimeString($settings['agenda_end_time']));
         $agendaBodyHeight = max(count($timeSlots) * $slotHeight, $slotHeight);
         $agendaPatients = $patients
@@ -53,13 +84,24 @@
     @endphp
 
     <x-slot name="header">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <div>
+        <div class="agenda-header-line">
+            <div class="flex items-center gap-3 lg:min-w-[200px]">
+                <img src="{{ asset('images/logo-filipponi.png') }}" alt="Danilo Filipponi" class="h-11 w-auto shrink-0 object-contain">
                 <h2 class="text-xl font-semibold leading-tight text-gray-800">Agenda</h2>
-                <p class="mt-1 text-sm text-gray-500">{{ ucfirst($periodTitle) }}</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('settings.agenda') }}" class="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist">Impostazioni agenda</a>
+            <div class="agenda-period-nav flex items-center justify-center gap-3">
+                <a href="{{ route('appointments.index', ['view' => $view, 'date' => $prevDate->toDateString()]) }}" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-white text-xl font-bold text-sage shadow-sm hover:bg-mist" aria-label="Periodo precedente">
+                    &lsaquo;
+                </a>
+                <div class="min-w-0 text-center">
+                    <p class="text-xs font-bold uppercase text-muted">Calendario</p>
+                    <h3 class="truncate text-base font-semibold text-gray-900 md:text-lg">{{ ucfirst($periodTitle) }}</h3>
+                </div>
+                <a href="{{ route('appointments.index', ['view' => $view, 'date' => $nextDate->toDateString()]) }}" class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-white text-xl font-bold text-sage shadow-sm hover:bg-mist" aria-label="Periodo successivo">
+                    &rsaquo;
+                </a>
+            </div>
+            <div class="agenda-view-actions flex items-center gap-2">
                 <a href="{{ route('appointments.index', ['view' => $view, 'date' => now()->toDateString()]) }}" class="rounded-xl border border-line bg-white px-3 py-2 text-sm font-bold text-muted hover:bg-mist hover:text-ink">Oggi</a>
                 <div class="flex rounded-xl border border-line bg-white p-1 shadow-sm">
                     @foreach ($viewLabels as $key => $label)
@@ -70,7 +112,7 @@
         </div>
     </x-slot>
 
-    <div class="py-8">
+    <div class="pb-8 pt-3">
         <div class="app-section space-y-6">
             @if (session('status'))
                 <div class="rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
@@ -140,11 +182,7 @@
                                 </div>
                                 <div class="min-w-0">
                                     <p class="truncate text-base font-black text-ink">{{ $appointment->title }}</p>
-                                    <p class="mt-1 truncate text-sm font-semibold text-muted">{{ $appointment->patient?->list_name ?: ($categoryMap->get($appointment->type)['label'] ?? 'Impegno personale') }}</p>
-                                    <div class="mt-2 inline-flex items-center gap-2 rounded-full bg-mist px-3 py-1 text-xs font-bold text-sage">
-                                        <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ $appointmentColor }}"></span>
-                                        {{ $categoryMap->get($appointment->type)['label'] ?? $appointment->type }}
-                                    </div>
+                                    <p class="mt-1 text-sm font-semibold text-muted">{{ $mobileVisibleStart->format('H:i') }} - {{ $mobileVisibleEnd->format('H:i') }}</p>
                                 </div>
                             </div>
                         </button>
@@ -158,29 +196,6 @@
             </section>
 
             <section class="app-card hidden overflow-hidden md:block">
-                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-white px-5 py-4">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <a href="{{ route('appointments.index', ['view' => $view, 'date' => $prevDate->toDateString()]) }}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white text-xl font-bold text-sage shadow-sm hover:bg-mist" aria-label="Periodo precedente">
-                            &lsaquo;
-                        </a>
-                        <div>
-                            <p class="text-xs font-bold uppercase text-muted">Calendario</p>
-                            <h3 class="text-lg font-semibold text-gray-900">{{ ucfirst($periodTitle) }}</h3>
-                        </div>
-                        <a href="{{ route('appointments.index', ['view' => $view, 'date' => $nextDate->toDateString()]) }}" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white text-xl font-bold text-sage shadow-sm hover:bg-mist" aria-label="Periodo successivo">
-                            &rsaquo;
-                        </a>
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                        @foreach ($categories as $category)
-                            <span class="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-xs font-bold text-ink">
-                                <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ $category['color'] }}"></span>
-                                {{ $category['label'] }}
-                            </span>
-                        @endforeach
-                    </div>
-                </div>
-
                 @if ($view === 'month')
                     <div class="grid grid-cols-7 border-b border-line bg-mist text-center text-xs font-bold uppercase text-muted">
                         @foreach (['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'] as $dayLabel)
@@ -245,7 +260,7 @@
                             <div class="grid bg-white" style="grid-template-columns: 82px repeat({{ $calendarDays->count() }}, minmax(180px, 1fr));">
                                 <div class="border-r border-line bg-white">
                                     @foreach ($timeSlots as $slot)
-                                        <div class="border-b border-[#d1dfdb] px-2 pt-1.5 text-[11px] font-bold leading-none text-muted" style="height: {{ $slotHeight }}px;">{{ $slot }}</div>
+                                        <div class="border-b border-[#c1d4cf] px-2 pt-1 text-[10px] font-bold leading-none text-muted" style="height: {{ $slotHeight }}px;">{{ $slot }}</div>
                                     @endforeach
                                 </div>
 
@@ -254,6 +269,13 @@
                                         $dayStart = $day->copy()->setTimeFromTimeString($settings['agenda_start_time']);
                                         $dayEnd = $day->copy()->setTimeFromTimeString($settings['agenda_end_time']);
                                         $dayEvents = $appointmentsByDate->get($day->toDateString(), collect());
+                                        $showCurrentTimeLine = $day->isSameDay($today) && $today->betweenIncluded($dayStart, $dayEnd);
+                                        $currentTimeTop = 0;
+
+                                        if ($showCurrentTimeLine) {
+                                            $currentMinutesFromStart = max(0, $dayStart->diffInMinutes($today, false));
+                                            $currentTimeTop = min($agendaBodyHeight - 1, ($currentMinutesFromStart / $slotMinutes) * $slotHeight);
+                                        }
                                     @endphp
                                     <div
                                         class="relative cursor-pointer border-r border-line last:border-r-0 {{ $day->isSameDay($today) ? 'bg-[#f4faf8]' : 'bg-white' }}"
@@ -267,6 +289,12 @@
                                     >
                                         <div class="pointer-events-none absolute inset-0 z-0" style="background-image: repeating-linear-gradient(to bottom, transparent 0, transparent {{ $slotHeight - 1 }}px, #b8cbc6 {{ $slotHeight - 1 }}px, #b8cbc6 {{ $slotHeight }}px);"></div>
                                         <div class="pointer-events-none absolute left-0 right-0 z-[1] hidden bg-sage/10" data-agenda-slot-preview style="height: {{ $slotHeight }}px;"></div>
+                                        @if ($showCurrentTimeLine)
+                                            <div class="pointer-events-none absolute left-0 right-0 z-30 flex items-center" data-current-time-line style="top: {{ $currentTimeTop }}px;">
+                                                <span class="-ml-1 mr-1 rounded-full bg-sage px-2 py-0.5 text-[10px] font-black leading-none text-white shadow-sm">{{ $today->format('H:i') }}</span>
+                                                <span class="h-[3px] flex-1 rounded-full bg-sage shadow-sm"></span>
+                                            </div>
+                                        @endif
 
                                         @foreach ($dayEvents as $appointment)
                                             @php
@@ -278,7 +306,7 @@
                                                 $minutesFromStart = max(0, $dayStart->diffInMinutes($visibleStart, false));
                                                 $durationMinutes = max(15, $visibleStart->diffInMinutes($visibleEnd, false));
                                                 $eventTop = ($minutesFromStart / $slotMinutes) * $slotHeight;
-                                                $eventHeight = max(24, ($durationMinutes / $slotMinutes) * $slotHeight);
+                                                $eventHeight = max(20, ($durationMinutes / $slotMinutes) * $slotHeight);
                                             @endphp
                                             @php
                                                 $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
@@ -295,7 +323,7 @@
                                                 data-starts-at="{{ $appointment->starts_at->format('Y-m-d\TH:i') }}"
                                                 data-ends-at="{{ $appointment->ends_at->format('Y-m-d\TH:i') }}"
                                                 draggable="true"
-                                                class="absolute left-0 right-0 z-10 box-border cursor-grab overflow-hidden rounded-xl border border-line bg-white p-2 text-left shadow-sm transition hover:bg-mist active:cursor-grabbing"
+                                                class="absolute left-0 right-0 z-10 box-border cursor-grab overflow-hidden rounded-xl border border-line bg-white px-2 py-1.5 text-left shadow-sm transition hover:bg-mist active:cursor-grabbing"
                                                 style="top: {{ $eventTop + 2 }}px; width: 100%; min-height: {{ $eventHeight }}px; border-left: 5px solid {{ $appointmentColor }};"
                                             >
                                                 @if ($unmatchedPatient)
@@ -306,7 +334,6 @@
                                                     <div class="min-w-0">
                                                         <p class="truncate text-sm font-bold text-ink">{{ $appointment->title }}</p>
                                                         <p class="mt-0.5 text-xs text-muted">{{ $visibleStart->format('H:i') }} - {{ $visibleEnd->format('H:i') }}</p>
-                                                        <p class="truncate text-xs text-muted">{{ $appointment->patient?->list_name ?: ($categoryMap->get($appointment->type)['label'] ?? 'Impegno personale') }}</p>
                                                     </div>
                                                 </div>
                                             </button>
@@ -802,9 +829,22 @@
 
             document.addEventListener('DOMContentLoaded', () => {
                 const patientMatchModal = document.querySelector('[data-auto-open-patient-match]');
+                const currentTimeLine = document.querySelector('[data-current-time-line]');
 
                 if (patientMatchModal) {
                     openAgendaModal(patientMatchModal);
+                }
+
+                if (currentTimeLine && !patientMatchModal) {
+                    window.setTimeout(() => {
+                        const lineTop = currentTimeLine.getBoundingClientRect().top + window.scrollY;
+                        const targetTop = Math.max(0, lineTop - (window.innerHeight * 0.35));
+
+                        window.scrollTo({
+                            top: targetTop,
+                            behavior: 'smooth',
+                        });
+                    }, 150);
                 }
             });
         </script>

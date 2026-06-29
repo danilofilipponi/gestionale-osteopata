@@ -1,4 +1,64 @@
 <x-app-layout>
+    <style>
+        @media (min-width: 1180px) {
+            .invoice-filter-form {
+                display: grid;
+                grid-template-columns: minmax(420px, 1fr) 180px 180px auto;
+                align-items: end;
+            }
+
+            .invoice-filter-actions {
+                justify-content: flex-end;
+                white-space: nowrap;
+            }
+        }
+
+        .invoice-export-modal[aria-hidden="true"] {
+            display: none;
+        }
+
+        .invoice-export-modal[aria-hidden="false"] {
+            display: flex;
+        }
+
+        .invoice-export-modal {
+            align-items: center;
+            background: rgba(15, 23, 42, 0.58);
+            inset: 0;
+            justify-content: center;
+            padding: 18px;
+            position: fixed;
+            z-index: 2147483647;
+        }
+
+        .invoice-export-dialog {
+            background: #ffffff;
+            border: 2px solid #c4d9d4;
+            border-radius: 18px;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.32);
+            max-height: calc(100vh - 36px);
+            max-width: 560px;
+            overflow: hidden;
+            width: min(560px, calc(100vw - 36px));
+        }
+
+        .invoice-export-dialog p {
+            overflow-wrap: anywhere;
+        }
+
+        .invoice-export-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        @media (max-width: 640px) {
+            .invoice-export-actions {
+                flex-direction: column-reverse;
+            }
+        }
+    </style>
+
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -22,7 +82,7 @@
                     <div class="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3">
                         <p class="text-[11px] leading-tight text-gray-500 sm:text-sm">Totale fatturato</p>
                         <form method="GET">
-                            @foreach (['search', 'status', 'from', 'to', 'summary_month'] as $key)
+                            @foreach (['search', 'quick_filter', 'from', 'to', 'summary_month'] as $key)
                                 <input type="hidden" name="{{ $key }}" value="{{ $filters[$key] }}">
                             @endforeach
                             <select name="summary_year" class="w-[72px] rounded-lg border-line bg-white py-1 pl-2 pr-7 text-xs font-bold text-muted shadow-sm sm:w-20 sm:pl-3 sm:pr-8" onchange="this.form.submit()">
@@ -40,7 +100,7 @@
                     <div class="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3">
                         <p class="text-[11px] leading-tight text-gray-500 sm:text-sm">Incassato</p>
                         <form method="GET">
-                            @foreach (['search', 'status', 'from', 'to', 'summary_year'] as $key)
+                            @foreach (['search', 'quick_filter', 'from', 'to', 'summary_year'] as $key)
                                 <input type="hidden" name="{{ $key }}" value="{{ $filters[$key] }}">
                             @endforeach
                             <select name="summary_month" class="w-[86px] rounded-lg border-line bg-white py-1 pl-2 pr-7 text-xs font-bold text-muted shadow-sm sm:w-28 sm:pl-3 sm:pr-8" onchange="this.form.submit()">
@@ -62,20 +122,13 @@
             </div>
 
             <section class="app-card p-4 sm:p-6">
-                <form method="GET" class="grid gap-4 lg:grid-cols-[1fr_180px_160px_160px_auto] lg:items-end">
+                <form method="GET" class="invoice-filter-form grid gap-4">
                     <input type="hidden" name="summary_year" value="{{ $filters['summary_year'] }}">
                     <input type="hidden" name="summary_month" value="{{ $filters['summary_month'] }}">
+                    <input type="hidden" name="quick_filter" value="{{ $filters['quick_filter'] }}">
                     <div>
                         <x-input-label for="search" value="Cerca" />
                         <input id="search" name="search" value="{{ $filters['search'] }}" class="app-field mt-1 block w-full" placeholder="Numero, paziente, codice fiscale o prestazione">
-                    </div>
-                    <div>
-                        <x-input-label for="status" value="Stato" />
-                        <select id="status" name="status" class="app-field mt-1 block w-full">
-                            @foreach ($statuses as $value => $label)
-                                <option value="{{ $value }}" @selected($filters['status'] === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
                     </div>
                     <div>
                         <x-input-label for="from" value="Da" />
@@ -85,29 +138,64 @@
                         <x-input-label for="to" value="A" />
                         <x-text-input id="to" name="to" type="date" class="mt-1 block w-full" :value="$filters['to']" />
                     </div>
-                    <div class="flex gap-3">
+                    <div class="invoice-filter-actions flex gap-3">
                         <button class="flex-1 rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm hover:bg-mist lg:flex-none">Filtra</button>
                         <a href="{{ route('invoices.index') }}" class="flex-1 rounded-xl border border-line bg-white px-4 py-2.5 text-center text-sm font-bold text-muted shadow-sm hover:bg-mist hover:text-ink lg:flex-none">Reset</a>
                     </div>
                 </form>
 
-                <div class="-mx-1 mt-5 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:gap-3 sm:overflow-visible">
-                    @foreach ($statuses as $value => $label)
+                <div class="-mx-1 mt-5 flex flex-col gap-3 px-1 pb-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:gap-3 sm:overflow-visible sm:pb-0">
+                        @foreach ($quickFilters as $value => $label)
+                            @php
+                                $filterUrl = route('invoices.index', array_filter([
+                                    'quick_filter' => $value,
+                                    'search' => $filters['search'],
+                                    'from' => $filters['from'],
+                                    'to' => $filters['to'],
+                                    'summary_year' => $filters['summary_year'],
+                                    'summary_month' => $filters['summary_month'],
+                                ], fn ($item) => filled($item) || is_numeric($item)));
+                            @endphp
+                            <a href="{{ $filterUrl }}" class="shrink-0 rounded-xl border border-line px-4 py-2 text-sm font-bold {{ $filters['quick_filter'] === $value ? 'bg-sage text-white' : 'bg-white text-muted hover:bg-mist hover:text-ink' }}">
+                                {{ $label }}
+                            </a>
+                        @endforeach
                         @php
-                            $count = $value === 'all' ? $summary['count'] : (int) ($statusCounts[$value]->count ?? 0);
-                            $statusUrl = route('invoices.index', array_filter([
-                                'status' => $value,
+                            $clearQuickUrl = route('invoices.index', array_filter([
                                 'search' => $filters['search'],
                                 'from' => $filters['from'],
                                 'to' => $filters['to'],
                                 'summary_year' => $filters['summary_year'],
                                 'summary_month' => $filters['summary_month'],
-                            ]));
+                            ], fn ($item) => filled($item) || is_numeric($item)));
                         @endphp
-                        <a href="{{ $statusUrl }}" class="shrink-0 rounded-xl border border-line px-4 py-2 text-sm font-bold {{ $filters['status'] === $value ? 'bg-sage text-white' : 'bg-white text-muted hover:bg-mist hover:text-ink' }}">
-                            {{ $label }} - {{ $count }}
-                        </a>
-                    @endforeach
+                        @if ($filters['quick_filter'])
+                            <a href="{{ $clearQuickUrl }}" class="shrink-0 rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-muted hover:bg-mist hover:text-ink">
+                                Tutte
+                            </a>
+                        @endif
+                    </div>
+
+                    @php
+                        $exportParams = array_filter([
+                            'quick_filter' => $filters['quick_filter'],
+                            'search' => $filters['search'],
+                            'from' => $filters['from'],
+                            'to' => $filters['to'],
+                            'summary_year' => $filters['summary_year'],
+                            'summary_month' => $filters['summary_month'],
+                        ], fn ($item) => filled($item) || is_numeric($item));
+                        $exportFrom = $exportRange['from'] ?: 'non disponibile';
+                        $exportTo = $exportRange['to'] ?: 'non disponibile';
+                    @endphp
+                    <button
+                        type="button"
+                        class="inline-flex shrink-0 items-center justify-center rounded-xl bg-sage px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#4f7f75] {{ $summary['count'] === 0 ? 'pointer-events-none opacity-50' : '' }}"
+                        data-open-invoice-export-modal
+                    >
+                        Esporta selezione
+                    </button>
                 </div>
             </section>
 
@@ -221,4 +309,58 @@
             </div>
         </div>
     </div>
+
+    <div class="invoice-export-modal hidden" aria-hidden="true" data-invoice-export-modal>
+        <div class="invoice-export-dialog">
+            <div class="border-b border-line bg-mist px-6 py-5">
+                <p class="text-xs font-bold uppercase text-muted">Esportazione XML</p>
+                <h3 class="mt-1 text-xl font-bold text-ink">Conferma esportazione</h3>
+            </div>
+            <div class="px-6 py-5">
+                <p class="text-sm leading-6 text-gray-700">
+                    Saranno esportate <strong class="text-ink">{{ $summary['count'] }}</strong> fatture dalla data
+                    <strong class="text-ink">{{ $exportFrom }}</strong> alla data
+                    <strong class="text-ink">{{ $exportTo }}</strong>.
+                </p>
+                <p class="mt-2 text-sm font-semibold text-muted">Il file verrà scaricato nella cartella download del browser.</p>
+            </div>
+            <div class="invoice-export-actions border-t border-line bg-white px-6 py-4">
+                <button type="button" class="rounded-xl border border-line bg-white px-5 py-2.5 text-sm font-bold text-muted shadow-sm hover:bg-mist hover:text-ink" data-close-invoice-export-modal>
+                    Annulla
+                </button>
+                <a href="{{ route('invoices.export-xml', $exportParams) }}" class="rounded-xl bg-sage px-5 py-2.5 text-center text-sm font-bold text-white shadow-sm hover:bg-[#4f7f75]">
+                    Esporta
+                </a>
+            </div>
+        </div>
+    </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('click', (event) => {
+                const modal = document.querySelector('[data-invoice-export-modal]');
+
+                if (event.target.closest('[data-open-invoice-export-modal]')) {
+                    modal?.setAttribute('aria-hidden', 'false');
+                    document.body.classList.add('overflow-hidden');
+                    return;
+                }
+
+                if (event.target.closest('[data-close-invoice-export-modal]') || event.target === modal) {
+                    modal?.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('overflow-hidden');
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key !== 'Escape') {
+                    return;
+                }
+
+                const modal = document.querySelector('[data-invoice-export-modal]');
+                modal?.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('overflow-hidden');
+            });
+        </script>
+    @endpush
 </x-app-layout>

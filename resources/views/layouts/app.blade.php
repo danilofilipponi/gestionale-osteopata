@@ -25,9 +25,8 @@
 
             @isset($header)
                 <header class="border-b border-line bg-white/90 backdrop-blur">
-                    <div class="app-section flex items-center gap-4 py-5">
-                        <img src="{{ asset('images/logo-filipponi.png') }}" alt="Danilo Filipponi" class="hidden h-12 w-auto shrink-0 object-contain sm:block">
-                        <div class="min-w-0 flex-1">
+                    <div class="app-section py-5">
+                        <div class="min-w-0">
                             {{ $header }}
                         </div>
                     </div>

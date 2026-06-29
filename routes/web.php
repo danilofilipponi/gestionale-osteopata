@@ -23,6 +23,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/patients/import', [PatientController::class, 'import'])->name('patients.import');
     Route::post('/settings/patients/merge', [SettingsController::class, 'mergePatients'])->name('settings.patients.merge');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('/invoices/export-xml', [InvoiceController::class, 'exportXml'])->name('invoices.export-xml');
     Route::get('/accounting', [AccountingController::class, 'index'])->name('accounting.index');
     Route::post('/accounting/expenses/import', [AccountingController::class, 'importExpenses'])->name('accounting.expenses.import');
     Route::post('/settings/accounting/incomes/import', [AccountingController::class, 'importYearIncomes'])->name('settings.accounting.incomes.import');

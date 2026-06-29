@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Invoice;
 use App\Models\Patient;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -218,5 +219,116 @@ class InvoiceIndexTest extends TestCase
             ->assertSee('3/2025')
             ->assertSee('Fatture di Gennaio 2025')
             ->assertSee('Gennaio');
+    }
+
+    public function test_invoices_page_can_be_filtered_with_quick_filters(): void
+    {
+        Carbon::setTestNow('2026-06-29 10:00:00');
+
+        $user = User::factory()->create();
+        $patient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+
+        Invoice::create([
+            'patient_id' => $patient->id,
+            'number' => '30/2026',
+            'issued_at' => '2026-06-29',
+            'service' => 'Seduta oggi',
+            'amount' => '40',
+            'status' => 'paid',
+            'xml_downloaded_at' => now(),
+        ]);
+        Invoice::create([
+            'patient_id' => $patient->id,
+            'number' => '29/2026',
+            'issued_at' => '2026-06-25',
+            'service' => 'Seduta settimana',
+            'amount' => '40',
+            'status' => 'paid',
+            'xml_downloaded_at' => null,
+        ]);
+        Invoice::create([
+            'patient_id' => $patient->id,
+            'number' => '20/2026',
+            'issued_at' => '2026-06-10',
+            'service' => 'Seduta vecchia',
+            'amount' => '40',
+            'status' => 'paid',
+            'xml_downloaded_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('invoices.index', ['quick_filter' => 'today']))
+            ->assertOk()
+            ->assertSee('30/2026')
+            ->assertDontSee('29/2026')
+            ->assertDontSee('20/2026');
+
+        $this->actingAs($user)
+            ->get(route('invoices.index', ['quick_filter' => 'last_7_days']))
+            ->assertOk()
+            ->assertSee('30/2026')
+            ->assertSee('29/2026')
+            ->assertDontSee('20/2026');
+
+        $this->actingAs($user)
+            ->get(route('invoices.index', ['quick_filter' => 'not_sent']))
+            ->assertOk()
+            ->assertSee('29/2026')
+            ->assertDontSee('30/2026');
+
+        Carbon::setTestNow();
+    }
+
+    public function test_invoice_selection_can_be_exported_as_xml_from_invoice_page(): void
+    {
+        Carbon::setTestNow('2026-06-29 10:00:00');
+
+        $user = User::factory()->create();
+        $patient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+            'fiscal_code' => 'RSSMRA80A01H501U',
+            'address' => 'Via Roma',
+            'postal_code' => '61032',
+            'city' => 'Fano',
+            'province' => 'PU',
+        ]);
+
+        $invoice = Invoice::create([
+            'patient_id' => $patient->id,
+            'number' => '30/2026',
+            'year' => 2026,
+            'progressive_number' => 30,
+            'issued_at' => '2026-06-29',
+            'service' => 'Seduta oggi',
+            'amount' => '40',
+            'status' => 'paid',
+            'xml_downloaded_at' => null,
+        ]);
+
+        Invoice::create([
+            'patient_id' => $patient->id,
+            'number' => '20/2026',
+            'year' => 2026,
+            'progressive_number' => 20,
+            'issued_at' => '2026-06-10',
+            'service' => 'Seduta vecchia',
+            'amount' => '40',
+            'status' => 'paid',
+            'xml_downloaded_at' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('invoices.export-xml', ['quick_filter' => 'today']))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/zip');
+
+        $this->assertNotNull($invoice->fresh()->xml_downloaded_at);
+        Carbon::setTestNow();
     }
 }

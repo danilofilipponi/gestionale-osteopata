@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use App\Support\InvoiceXmlExporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,7 @@ class InvoiceController extends Controller
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:all,draft,sent,paid,cancelled'],
+            'quick_filter' => ['nullable', 'in:today,last_7_days,not_sent'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
             'summary_year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
@@ -36,11 +38,7 @@ class InvoiceController extends Controller
             'open' => (clone $query)->whereIn('status', ['draft', 'sent'])->sum('amount'),
         ];
 
-        $statusCounts = $this->invoiceQuery($validated, false)
-            ->selectRaw('status, count(*) as count, sum(amount) as total')
-            ->groupBy('status')
-            ->get()
-            ->keyBy('status');
+        $exportRange = $this->exportRange(clone $query);
 
         $invoices = $query
             ->orderByDesc('year')
@@ -53,19 +51,56 @@ class InvoiceController extends Controller
         return view('invoices.index', [
             'invoices' => $invoices,
             'summary' => $summary,
-            'statusCounts' => $statusCounts,
             'filters' => [
                 'search' => $validated['search'] ?? '',
                 'status' => $validated['status'] ?? 'all',
+                'quick_filter' => $validated['quick_filter'] ?? '',
                 'from' => $validated['from'] ?? '',
                 'to' => $validated['to'] ?? '',
                 'summary_year' => $selectedYear,
                 'summary_month' => $selectedMonth,
             ],
             'statuses' => $this->statuses(),
+            'quickFilters' => $this->quickFilters(),
+            'exportRange' => $exportRange,
             'availableYears' => $availableYears,
             'availableMonths' => $availableMonths,
             'monthLabels' => $this->monthLabels(),
+        ]);
+    }
+
+    public function exportXml(Request $request)
+    {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'in:all,draft,sent,paid,cancelled'],
+            'quick_filter' => ['nullable', 'in:today,last_7_days,not_sent'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'summary_year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+            'summary_month' => ['nullable', 'integer', 'min:1', 'max:12'],
+        ]);
+
+        $validated['summary_year'] = (int) ($validated['summary_year'] ?? now()->year);
+        $validated['summary_month'] = (int) ($validated['summary_month'] ?? now()->month);
+
+        $invoices = $this->invoiceQuery($validated)
+            ->with('patient')
+            ->orderBy('issued_at')
+            ->orderBy('number')
+            ->get();
+
+        abort_if($invoices->isEmpty(), 422, 'Nessuna fattura da esportare.');
+
+        $from = $invoices->min('issued_at')?->format('Y-m-d') ?: 'inizio';
+        $to = $invoices->max('issued_at')?->format('Y-m-d') ?: 'fine';
+
+        $invoices->each->update(['xml_downloaded_at' => now()]);
+
+        return response(InvoiceXmlExporter::make($invoices), 200, [
+            'Content-Type' => 'application/zip',
+            'Content-Disposition' => 'attachment; filename="export-fatture-xml-'.$from.'-'.$to.'.zip"',
+            'Cache-Control' => 'no-store, no-cache',
         ]);
     }
 
@@ -87,10 +122,36 @@ class InvoiceController extends Controller
                 });
             })
             ->when($includeStatus && filled($filters['status'] ?? null) && $filters['status'] !== 'all', fn ($query) => $query->where('status', $filters['status']))
+            ->when(($filters['quick_filter'] ?? null) === 'today', fn ($query) => $query->whereDate('issued_at', now()->toDateString()))
+            ->when(($filters['quick_filter'] ?? null) === 'last_7_days', fn ($query) => $query
+                ->whereDate('issued_at', '>=', now()->copy()->subDays(6)->toDateString())
+                ->whereDate('issued_at', '<=', now()->toDateString()))
+            ->when(($filters['quick_filter'] ?? null) === 'not_sent', fn ($query) => $query->whereNull('xml_downloaded_at'))
             ->when(! $hasSearch && filled($filters['summary_year'] ?? null), fn ($query) => $query->whereYear('issued_at', $filters['summary_year']))
             ->when(! $hasSearch && filled($filters['summary_month'] ?? null), fn ($query) => $query->whereMonth('issued_at', $filters['summary_month']))
             ->when($filters['from'] ?? null, fn ($query, string $from) => $query->whereDate('issued_at', '>=', $from))
             ->when($filters['to'] ?? null, fn ($query, string $to) => $query->whereDate('issued_at', '<=', $to));
+    }
+
+    private function quickFilters(): array
+    {
+        return [
+            'last_7_days' => 'Ultimi 7 gg',
+            'today' => 'Oggi',
+            'not_sent' => 'Non inviate',
+        ];
+    }
+
+    private function exportRange($query): array
+    {
+        $dates = $query
+            ->selectRaw('MIN(issued_at) as first_date, MAX(issued_at) as last_date')
+            ->first();
+
+        return [
+            'from' => $dates?->first_date ? date('d/m/Y', strtotime($dates->first_date)) : '',
+            'to' => $dates?->last_date ? date('d/m/Y', strtotime($dates->last_date)) : '',
+        ];
     }
 
     private function statuses(): array
