@@ -51,6 +51,9 @@
         $defaultStart = $date->copy()->setTimeFromTimeString($settings['agenda_start_time'])->format('Y-m-d\TH:i');
         $defaultEnd = $date->copy()->setTimeFromTimeString($settings['agenda_start_time'])->addMinutes((int) $settings['agenda_default_duration'])->format('Y-m-d\TH:i');
         $categoryMap = collect($categories)->keyBy('key');
+        $appointmentDisplayColor = fn ($appointment) => $appointment->status === 'no_show'
+            ? '#9ca3af'
+            : ($appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a'));
         $calendarDayChunks = $calendarDays->chunk(7);
         $slotMinutes = 15;
         $slotHeight = 22;
@@ -158,7 +161,7 @@
                 <div class="divide-y divide-line bg-white">
                     @forelse ($mobileDayEvents as $appointment)
                         @php
-                            $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                            $appointmentColor = $appointmentDisplayColor($appointment);
                             $mobileVisibleStart = $appointment->starts_at->copy()->lessThan($mobileDayStart) ? $mobileDayStart->copy() : $appointment->starts_at->copy();
                             $mobileVisibleEnd = $appointment->ends_at->copy()->greaterThan($mobileDayEnd) ? $mobileDayEnd->copy() : $appointment->ends_at->copy();
                             $unmatchedPatient = blank($appointment->patient_id)
@@ -219,7 +222,7 @@
                                 <div class="mt-2 space-y-1">
                                     @foreach ($dayEvents->take(4) as $appointment)
                                         @php
-                                            $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                                            $appointmentColor = $appointmentDisplayColor($appointment);
                                             $monthDayStart = $day->copy()->setTimeFromTimeString($settings['agenda_start_time']);
                                             $monthVisibleStart = $appointment->starts_at->copy()->lessThan($monthDayStart) ? $monthDayStart : $appointment->starts_at;
                                             $unmatchedPatient = blank($appointment->patient_id)
@@ -309,7 +312,7 @@
                                                 $eventHeight = max(20, ($durationMinutes / $slotMinutes) * $slotHeight);
                                             @endphp
                                             @php
-                                                $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                                                $appointmentColor = $appointmentDisplayColor($appointment);
                                                 $unmatchedPatient = blank($appointment->patient_id)
                                                     && filled($appointment->google_event_id)
                                                     && filled($appointment->google_calendar_id)
@@ -354,7 +357,7 @@
 
         @foreach ($appointments as $appointment)
             @php
-                $appointmentColor = $appointment->color ?: ($categoryMap->get($appointment->type)['color'] ?? '#5f948a');
+                $appointmentColor = $appointmentDisplayColor($appointment);
             @endphp
             @include('appointments.partials.modal', ['appointment' => $appointment, 'appointmentColor' => $appointmentColor])
         @endforeach

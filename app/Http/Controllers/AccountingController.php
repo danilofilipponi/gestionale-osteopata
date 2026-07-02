@@ -75,6 +75,11 @@ class AccountingController extends Controller
                     ->orWhereNull('paid');
             })
             ->whereNull('invoice_id')
+            ->whereDoesntHave('patient.invoices', function ($query) {
+                $query->whereColumn('invoices.issued_at', 'treatment_sessions.session_date')
+                    ->where('invoices.status', '!=', 'cancelled');
+            })
+            ->whereDoesntHave('appointment', fn ($query) => $query->whereIn('status', ['cancelled', 'no_show']))
             ->get()
             ->groupBy(fn (TreatmentSession $session) => (int) $session->session_date->format('n'));
 

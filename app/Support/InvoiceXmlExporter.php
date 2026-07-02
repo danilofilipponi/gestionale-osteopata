@@ -85,7 +85,7 @@ class InvoiceXmlExporter
         self::append($document, $generalDocument, 'TipoDocumento', $settings['invoice_document_type']);
         self::append($document, $generalDocument, 'Divisa', $settings['invoice_currency']);
         self::append($document, $generalDocument, 'Data', $invoice->issued_at->format('Y-m-d'));
-        self::append($document, $generalDocument, 'Numero', $invoice->number ?: self::progressive($invoice));
+        self::append($document, $generalDocument, 'Numero', self::documentNumber($invoice));
 
         $amounts = self::amounts($invoice, $settings);
         if ($amounts['social_security'] > 0) {
@@ -254,6 +254,13 @@ class InvoiceXmlExporter
     private static function progressive(Invoice $invoice): string
     {
         return (string) ($invoice->progressive_number ?: $invoice->id);
+    }
+
+    private static function documentNumber(Invoice $invoice): string
+    {
+        $number = trim((string) ($invoice->number ?: self::progressive($invoice)));
+
+        return Str::startsWith(Str::upper($number), 'FPR') ? $number : 'FPR'.$number;
     }
 
     private static function money(float|int $value): string

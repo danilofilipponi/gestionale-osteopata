@@ -101,6 +101,9 @@ class AppointmentController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatedAppointment($request);
+        if (filled($data['patient_id'] ?? null)) {
+            $data['patient_match_status'] = 'matched';
+        }
         $data['color'] = ($data['color'] ?? null) ?: $this->categoryColor($data['type']);
 
         $appointment = Appointment::create($data);
@@ -112,6 +115,9 @@ class AppointmentController extends Controller
     public function update(Request $request, Appointment $appointment)
     {
         $data = $this->validatedAppointment($request);
+        if (filled($data['patient_id'] ?? null)) {
+            $data['patient_match_status'] = 'matched';
+        }
         $data['color'] = ($data['color'] ?? null) ?: $this->categoryColor($data['type']);
 
         $appointment->update($data);

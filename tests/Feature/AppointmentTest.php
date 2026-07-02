@@ -209,6 +209,65 @@ class AppointmentTest extends TestCase
             ->assertSee('<div id="patient-match-modal" data-auto-open-patient-match', false);
     }
 
+    public function test_manually_linking_an_ignored_appointment_marks_it_as_matched(): void
+    {
+        $user = User::factory()->create();
+        $patient = Patient::create([
+            'user_id' => $user->id,
+            'first_name' => 'Mario',
+            'last_name' => 'Rossi',
+        ]);
+        $appointment = Appointment::create([
+            'title' => 'Rossi Mario',
+            'starts_at' => '2026-07-02 09:00:00',
+            'ends_at' => '2026-07-02 09:45:00',
+            'type' => 'visit',
+            'status' => 'scheduled',
+            'google_event_id' => 'google-ignored-event',
+            'google_calendar_id' => 'primary',
+            'patient_match_status' => 'ignored',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('appointments.update', $appointment), [
+                'patient_id' => $patient->id,
+                'title' => $patient->list_name,
+                'starts_at' => '2026-07-02 09:00:00',
+                'ends_at' => '2026-07-02 09:45:00',
+                'type' => 'visit',
+                'status' => 'scheduled',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('appointments', [
+            'id' => $appointment->id,
+            'patient_id' => $patient->id,
+            'patient_match_status' => 'matched',
+        ]);
+    }
+
+    public function test_no_show_appointment_is_displayed_in_gray(): void
+    {
+        $user = User::factory()->create();
+        Appointment::create([
+            'title' => 'Rossi Mario',
+            'starts_at' => '2026-07-02 09:00:00',
+            'ends_at' => '2026-07-02 09:45:00',
+            'type' => 'visit',
+            'status' => 'no_show',
+            'color' => '#039be5',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('appointments.index', [
+                'view' => 'week',
+                'date' => '2026-07-02',
+            ]))
+            ->assertOk()
+            ->assertSee('border-left: 5px solid #9ca3af', false);
+    }
+
     public function test_google_calendar_sync_requires_reconnect_when_token_is_revoked(): void
     {
         config([

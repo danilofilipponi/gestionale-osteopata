@@ -233,9 +233,7 @@ class GoogleCalendarController extends Controller
             if ($appointment->patient_id) {
                 $payload['patient_id'] = $appointment->patient_id;
                 $payload['patient_match_status'] = 'matched';
-            }
-
-            if ($appointment->patient_match_status === 'ignored') {
+            } elseif ($appointment->patient_match_status === 'ignored') {
                 $payload['patient_id'] = null;
                 $payload['patient_match_status'] = 'ignored';
             }
